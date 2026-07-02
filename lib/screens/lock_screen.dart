@@ -54,7 +54,7 @@ class _LockScreenState extends State<LockScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              const BrandLogo(width: 280, height: 150),
+              const BrandLogo(width: 340, height: 182),
               const SizedBox(height: 44),
               const Icon(Icons.lock_outline,
                   color: AppColors.gold, size: 52),

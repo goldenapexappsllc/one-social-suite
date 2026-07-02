@@ -85,11 +85,6 @@ class _ComposeScreenState extends State<ComposeScreen> {
         }
       });
 
-  void _applyRecommendations() => setState(() {
-        _selected
-          ..clear()
-          ..addAll(_suggestion.recommendedIds);
-      });
 
   Future<void> _pickMedia() async {
     _dismissKeyboard();
@@ -613,20 +608,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
                         fontSize: 15,
                         fontWeight: FontWeight.w600)),
               )),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _applyRecommendations,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.gold,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: const Text('Apply Recommendations',
-                  style: TextStyle(
-                      color: Colors.black, fontWeight: FontWeight.bold)),
-            ),
-          ),
+
           if (sug.reasons.isNotEmpty) ...<Widget>[
             const SizedBox(height: 14),
             const Text('Why?',

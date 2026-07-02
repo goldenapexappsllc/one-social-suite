@@ -55,7 +55,12 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
       child: Stack(
         children: <Widget>[
           widget.child,
-          if (_locked) LockScreen(onUnlock: _unlock),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: _locked
+                ? LockScreen(key: const ValueKey(true), onUnlock: _unlock)
+                : const SizedBox.shrink(key: ValueKey(false)),
+          ),
         ],
       ),
     );
