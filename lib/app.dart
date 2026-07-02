@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
-import 'screens/lock_gate.dart';
+import 'widgets/lock_gate.dart';
 
 class OneSocialSuiteApp extends StatelessWidget {
   const OneSocialSuiteApp({super.key});

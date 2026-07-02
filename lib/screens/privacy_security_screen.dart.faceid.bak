@@ -1,0 +1,765 @@
+import 'package:flutter/material.dart';
+import '../services/security_service.dart';
+import '../theme/app_theme.dart';
+import 'policy_screen.dart';
+import 'package:flutter/services.dart';
+
+// ---------------------------------------------------------------------------
+// Privacy & Security tab -- merged per spec.
+// Security section (PIN + Face ID + timeout) at top.
+// Existing Privacy dashboard content below.
+// ---------------------------------------------------------------------------
+class PrivacySecurityScreen extends StatefulWidget {
+  const PrivacySecurityScreen({super.key});
+
+  @override
+  State<PrivacySecurityScreen> createState() => _PrivacySecurityScreenState();
+}
+
+class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
+  final SecurityService _sec = SecurityService.instance;
+
+  bool _pinEnabled = false;
+  bool _faceEnabled = false;
+  int _timeout = 1;
+  bool _biometricAvailable = false;
+  final bool _savingPin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pinEnabled = _sec.pinEnabled;
+    _faceEnabled = _sec.faceEnabled;
+    _timeout = _sec.timeoutMinutes;
+    _sec.isBiometricAvailable().then((v) {
+      if (mounted) setState(() => _biometricAvailable = v);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // PIN flow
+  // ---------------------------------------------------------------------------
+
+  /// Shows the disclaimer modal. Returns true if user tapped "I Understand".
+
+  /// Shows the generated PIN to the user exactly once.
+
+  Future<void> _togglePin(bool value) async {
+    await _runUserPinToggle(value);
+  }
+
+  Future<void> _toggleFaceId(bool value) async {
+    if (value) {
+      if (!_biometricAvailable) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Face ID is not available on this device.'),
+          ),
+        );
+        return;
+      }
+      // Trigger Face ID once to confirm it works before enabling
+      final ok = await _sec.authenticateFace();
+      if (!ok || !mounted) return;
+      _sec.enableFaceId();
+      setState(() => _faceEnabled = true);
+    } else {
+      // Require PIN confirmation before disabling Face ID
+      if (_sec.pinEnabled) {
+        final pin = await _showPinEntryDialog();
+        if (pin == null || !mounted) return;
+        final valid = _sec.validatePin(pin);
+        if (!valid || !mounted) return;
+      }
+      _sec.disableFaceId();
+      setState(() => _faceEnabled = false);
+    }
+  }
+
+  Future<String?> _showPinEntryDialog() async {
+    String entered = '';
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx2, setS) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text(
+            'Confirm your PIN',
+            style: TextStyle(color: AppColors.gold),
+          ),
+          content: TextField(
+            autofocus: true,
+            obscureText: true,
+            maxLength: 6,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: Colors.white, letterSpacing: 8),
+            decoration: const InputDecoration(
+              hintText: '------',
+              hintStyle: TextStyle(color: AppColors.textMuted),
+              counterText: '',
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: AppColors.gold),
+              ),
+            ),
+            onChanged: (v) => entered = v,
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(null),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: AppColors.textMuted),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(entered),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
+              child: const Text(
+                'Confirm',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
+
+  Future<String?> _showCreatePinDialog() async {
+    final pinController = TextEditingController();
+    final confirmController = TextEditingController();
+
+    String? errorText;
+    bool obscurePin = true;
+
+    try {
+      return await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              void savePin() {
+                final pin = pinController.text.trim();
+                final confirmPin = confirmController.text.trim();
+
+                if (!SecurityService.instance.isValidSixDigitPin(pin)) {
+                  setDialogState(() {
+                    errorText = 'Enter exactly 6 digits.';
+                  });
+                  return;
+                }
+
+                if (pin != confirmPin) {
+                  setDialogState(() {
+                    errorText = 'PINs do not match.';
+                  });
+                  return;
+                }
+
+                Navigator.of(dialogContext).pop(pin);
+              }
+
+              return AlertDialog(
+                title: const Text('Create 6-digit PIN'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Choose a 6-digit PIN you will remember. This stays only on this device.',
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: pinController,
+                      autofocus: true,
+                      obscureText: obscurePin,
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(6),
+                      ],
+                      decoration: const InputDecoration(
+                        labelText: 'New PIN',
+                        counterText: '',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: confirmController,
+                      obscureText: obscurePin,
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(6),
+                      ],
+                      decoration: const InputDecoration(
+                        labelText: 'Confirm PIN',
+                        counterText: '',
+                        border: OutlineInputBorder(),
+                      ),
+                      onSubmitted: (_) => savePin(),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: !obscurePin,
+                          onChanged: (value) {
+                            setDialogState(() {
+                              obscurePin = !(value ?? false);
+                            });
+                          },
+                        ),
+                        const Text('Show PIN'),
+                      ],
+                    ),
+                    if (errorText != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        errorText!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ],
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop(null);
+                    },
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: savePin,
+                    child: const Text('Save PIN'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      pinController.dispose();
+      confirmController.dispose();
+    }
+  }
+
+  void _refreshSecurityStateAfterPinChange() {
+    if (!mounted) return;
+
+    setState(() {
+      _pinEnabled = SecurityService.instance.pinEnabled;
+      _faceEnabled = SecurityService.instance.faceEnabled;
+    });
+  }
+
+  Future<void> _runUserPinToggle(bool enabled) async {
+    final service = SecurityService.instance;
+
+    if (!enabled) {
+      service.disablePin();
+      _refreshSecurityStateAfterPinChange();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('PIN lock turned off.')));
+      return;
+    }
+
+    final pin = await _showCreatePinDialog();
+
+    if (!mounted) return;
+
+    if (pin == null) {
+      // User canceled. Keep PIN off.
+      service.disablePin();
+      _refreshSecurityStateAfterPinChange();
+      return;
+    }
+
+    final saved = service.setCustomPin(pin);
+
+    _refreshSecurityStateAfterPinChange();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          saved ? 'PIN lock turned on.' : 'PIN must be exactly 6 digits.',
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.black,
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              // Header
+              const Center(
+                child: Icon(Icons.security, color: AppColors.gold, size: 56),
+              ),
+              const SizedBox(height: 10),
+              const Center(
+                child: Text(
+                  'Privacy & Security',
+                  style: TextStyle(
+                    color: AppColors.gold,
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Center(
+                child: Text(
+                  'Your data stays on your device.',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // ---- SECURITY SECTION ----
+              _sectionLabel('Security'),
+              const SizedBox(height: 8),
+
+              // PIN toggle
+              _toggleCard(
+                icon: Icons.pin_outlined,
+                title: '6-Digit PIN lock',
+                subtitle: _pinEnabled
+                    ? 'PIN required to open 1Social'
+                    : 'Tap to set a 6-digit PIN',
+                value: _pinEnabled,
+                onChanged: _savingPin ? null : _togglePin,
+              ),
+              const SizedBox(height: 8),
+
+              // Face ID toggle
+              _toggleCard(
+                icon: Icons.face_outlined,
+                title: 'Face ID lock',
+                subtitle: _faceEnabled
+                    ? 'Required to open 1Social'
+                    : _biometricAvailable
+                    ? 'Tap to require Face ID on open'
+                    : 'Face ID not available on this device',
+                value: _faceEnabled,
+                onChanged: _biometricAvailable ? _toggleFaceId : null,
+              ),
+
+              // Stacked auth note
+              if (_pinEnabled && _faceEnabled) ...<Widget>[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.gold.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: const Row(
+                    children: <Widget>[
+                      Icon(Icons.shield, color: AppColors.gold, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Face ID first, PIN fallback after 2 failures. '
+                          'Maximum security.',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // Timeout
+              if (_pinEnabled || _faceEnabled) ...<Widget>[
+                const SizedBox(height: 10),
+                _timeoutCard(),
+              ],
+
+              const SizedBox(height: 8),
+              // PIN disclaimer note
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Text(
+                  'Your PIN is stored only on this device in your iPhone\'s '
+                  'secure Keychain. 1Social and AppForge LLC have no way to '
+                  'unlock the app or recover your PIN. Keep it safe.',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              // ---- PRIVACY SECTION ----
+              _sectionLabel('The 1Social Promise'),
+              const SizedBox(height: 8),
+              _promiseCard(),
+              const SizedBox(height: 24),
+
+              _sectionLabel('What stays on your device'),
+              const SizedBox(height: 8),
+              _statusRow(
+                icon: Icons.lock_outline,
+                title: 'Social media passwords',
+                status: 'Never stored',
+              ),
+              _statusRow(
+                icon: Icons.do_not_disturb_on_outlined,
+                title: 'Selling your data',
+                status: 'Never',
+              ),
+              _statusRow(
+                icon: Icons.visibility_off_outlined,
+                title: 'Cross-app tracking',
+                status: 'None',
+              ),
+              _statusRow(
+                icon: Icons.edit_note,
+                title: 'Drafts',
+                status: 'On this device only',
+              ),
+              _statusRow(
+                icon: Icons.history,
+                title: 'Share history',
+                status: 'On this device only',
+              ),
+              _statusRow(
+                icon: Icons.analytics_outlined,
+                title: 'Analytics',
+                status: 'Off',
+              ),
+              const SizedBox(height: 24),
+
+              _sectionLabel('What this means'),
+              const SizedBox(height: 8),
+              _footnoteCard(),
+              const SizedBox(height: 20),
+
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const PolicyScreen(),
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.gold),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  icon: const Icon(
+                    Icons.description_outlined,
+                    color: AppColors.gold,
+                    size: 18,
+                  ),
+                  label: const Text(
+                    'Read Full Privacy Policy',
+                    style: TextStyle(color: AppColors.gold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reusable widgets
+  // ---------------------------------------------------------------------------
+  Widget _sectionLabel(String text) => Text(
+    text,
+    style: const TextStyle(
+      color: Colors.white,
+      fontSize: 15,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.3,
+    ),
+  );
+
+  Widget _toggleCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required Function(bool)? onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: value
+              ? AppColors.gold.withValues(alpha: 0.6)
+              : AppColors.border,
+        ),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, color: AppColors.gold, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor: AppColors.gold,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _timeoutCard() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Row(
+            children: <Widget>[
+              Icon(Icons.timer_outlined, color: AppColors.gold, size: 20),
+              SizedBox(width: 10),
+              Text(
+                'Auto-lock after',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            children: <int>[1, 5, 10].map((int m) {
+              final bool selected = _timeout == m;
+              return ChoiceChip(
+                label: Text(
+                  '$m min',
+                  style: TextStyle(
+                    color: selected ? Colors.black : Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                selected: selected,
+                onSelected: (_) async {
+                  _sec.setTimeout(m);
+                  if (!mounted) return;
+                  setState(() => _timeout = m);
+                },
+                backgroundColor: AppColors.black,
+                selectedColor: AppColors.gold,
+                side: BorderSide(
+                  color: selected ? AppColors.gold : AppColors.border,
+                ),
+                showCheckmark: false,
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Idle time only. Never locks while you are typing.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _promiseCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.gold.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.verified_outlined, color: AppColors.gold, size: 22),
+              SizedBox(width: 8),
+              Text(
+                'Privacy-first by design',
+                style: TextStyle(
+                  color: AppColors.gold,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 10),
+          Text(
+            'No social media passwords stored. No selling user data. '
+            'No cross-app tracking. Drafts and share history stay on '
+            'your device unless you choose otherwise.',
+            style: TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusRow({
+    required IconData icon,
+    required String title,
+    required String status,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, color: AppColors.gold, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.gold.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.gold.withValues(alpha: 0.5)),
+            ),
+            child: Text(
+              status,
+              style: const TextStyle(
+                color: AppColors.gold,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _footnoteCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Sharing uses your phone\'s built-in share sheet. '
+            'Each app handles your post on its own end. 1Social '
+            'cannot see or confirm what is published after handoff.',
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12.5,
+              height: 1.45,
+            ),
+          ),
+          SizedBox(height: 10),
+          Text(
+            'For Snapchat and Nextdoor, the caption is copied to your '
+            'clipboard and the app is opened so you can paste it in.',
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12.5,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

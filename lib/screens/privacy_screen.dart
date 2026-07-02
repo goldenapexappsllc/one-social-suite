@@ -3,8 +3,6 @@ import '../theme/app_theme.dart';
 import 'policy_screen.dart';
 import '../services/app_lock_service.dart';
 
-/// Privacy Dashboard - 1Social's privacy promise made visible.
-/// Wording is honest and matches what we can actually claim.
 class PrivacyScreen extends StatefulWidget {
   const PrivacyScreen({super.key});
 
@@ -13,11 +11,8 @@ class PrivacyScreen extends StatefulWidget {
 }
 
 class _PrivacyScreenState extends State<PrivacyScreen> {
-  // Local-only toggles for v1. Wired to real services in later sessions:
-  //   Face ID -> Session 8 (AppLockService)
-  //   Analytics -> always off in v1 (privacy-first)
-  bool _faceIdEnabled = AppLockService.instance.isEnabled;
-  int _lockTimeoutMinutes = AppLockService.instance.timeoutMinutes;
+  bool _faceIdEnabled      = AppLockService.instance.isEnabled;
+  int  _lockTimeoutMinutes = AppLockService.instance.timeoutMinutes;
 
   @override
   Widget build(BuildContext context) {
@@ -29,81 +24,59 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              // Header
               const Center(
                 child: Icon(Icons.shield_outlined,
                     color: AppColors.gold, size: 56),
               ),
               const SizedBox(height: 10),
               const Center(
-                child: Text(
-                  'Privacy',
-                  style: TextStyle(
-                    color: AppColors.gold,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: Text('Privacy',
+                    style: TextStyle(
+                        color: AppColors.gold,
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 4),
               const Center(
                 child: Text(
                   'Write Once. Share Everywhere. Stay private.',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  style: TextStyle(
+                      color: AppColors.textMuted, fontSize: 13),
                 ),
               ),
               const SizedBox(height: 24),
 
-              // The Promise
               _sectionLabel('The 1Social Promise'),
               const SizedBox(height: 8),
               _promiseCard(),
               const SizedBox(height: 24),
 
-              // What stays on your device
               _sectionLabel('What stays on your device'),
               const SizedBox(height: 8),
-              _statusRow(
-                icon: Icons.lock_outline,
-                title: 'Social media passwords',
-                status: 'Never stored',
-                ok: true,
-              ),
-              _statusRow(
-                icon: Icons.do_not_disturb_on_outlined,
-                title: 'Selling your data',
-                status: 'Never',
-                ok: true,
-              ),
-              _statusRow(
-                icon: Icons.visibility_off_outlined,
-                title: 'Cross-app tracking',
-                status: 'None',
-                ok: true,
-              ),
-              _statusRow(
-                icon: Icons.edit_note,
-                title: 'Drafts',
-                status: 'On this device only',
-                ok: true,
-              ),
-              _statusRow(
-                icon: Icons.history,
-                title: 'Share history',
-                status: 'On this device only',
-                ok: true,
-              ),
-              _statusRow(
-                icon: Icons.analytics_outlined,
-                title: 'Analytics',
-                status: 'Off',
-                ok: true,
-              ),
+              _statusRow(icon: Icons.lock_outline,
+                  title: 'Social media passwords',
+                  status: 'Never stored'),
+              _statusRow(icon: Icons.do_not_disturb_on_outlined,
+                  title: 'Selling your data',
+                  status: 'Never'),
+              _statusRow(icon: Icons.visibility_off_outlined,
+                  title: 'Cross-app tracking',
+                  status: 'None'),
+              _statusRow(icon: Icons.edit_note,
+                  title: 'Drafts',
+                  status: 'On this device only'),
+              _statusRow(icon: Icons.history,
+                  title: 'Share history',
+                  status: 'On this device only'),
+              _statusRow(icon: Icons.analytics_outlined,
+                  title: 'Analytics',
+                  status: 'Off'),
               const SizedBox(height: 24),
 
-              // Security settings (Face ID + timeout)
               _sectionLabel('Security'),
               const SizedBox(height: 8),
+
+              // Face ID toggle
               _toggleCard(
                 icon: Icons.face_outlined,
                 title: 'Face ID lock',
@@ -117,30 +90,92 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                   setState(() => _faceIdEnabled = v);
                 },
               ),
+
               if (_faceIdEnabled) ...<Widget>[
                 const SizedBox(height: 10),
                 _timeoutCard(),
+                const SizedBox(height: 12),
+                // Security disclaimer
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppColors.gold.withValues(alpha: 0.3)),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          Icon(Icons.security,
+                              color: AppColors.gold, size: 16),
+                          SizedBox(width: 8),
+                          Text('How it works',
+                              style: TextStyle(
+                                  color: AppColors.gold,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13)),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Face ID is the primary unlock method. If Face ID '
+                        'is unavailable, iOS will prompt for your iPhone '
+                        'passcode -- the same secure system used by Apple '
+                        'Pay and the App Store.',
+                        style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                            height: 1.5),
+                      ),
+                    ],
+                  ),
+                ),
               ],
-              const SizedBox(height: 24),
 
-              // Honest footnote
+              const SizedBox(height: 12),
+
+              // Main disclaimer
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Text(
+                  '\uD83D\uDD12 Keep your iPhone locked to ensure your '
+                  '1Social data stays protected from anyone who may '
+                  'have access to your device.\n\n'
+                  'Face ID provides an additional layer of security '
+                  'beyond the standard lock screen, helping safeguard '
+                  'your information at all times.',
+                  style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                      height: 1.5),
+                ),
+              ),
+
+              const SizedBox(height: 24),
               _sectionLabel('What this means'),
               const SizedBox(height: 8),
               _footnoteCard(),
               const SizedBox(height: 20),
 
-              // Privacy policy link
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => const PolicyScreen(),
-                    ),
+                        builder: (_) => const PolicyScreen()),
                   ),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppColors.gold),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 14),
                   ),
                   icon: const Icon(Icons.description_outlined,
                       color: AppColors.gold, size: 18),
@@ -155,104 +190,92 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
     );
   }
 
-  // ---- pieces ----
-
-  Widget _sectionLabel(String text) => Text(
-        text,
-        style: const TextStyle(
+  Widget _sectionLabel(String text) => Text(text,
+      style: const TextStyle(
           color: Colors.white,
           fontSize: 15,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
+          letterSpacing: 0.3));
+
+  Widget _promiseCard() => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.gold.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(16),
+          border:
+              Border.all(color: AppColors.gold.withValues(alpha: 0.45)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(Icons.verified_outlined,
+                    color: AppColors.gold, size: 22),
+                SizedBox(width: 8),
+                Text('Privacy-first by design',
+                    style: TextStyle(
+                        color: AppColors.gold,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15)),
+              ],
+            ),
+            SizedBox(height: 10),
+            Text(
+              'No social media passwords stored. No selling user data. '
+              'No cross-app tracking. Drafts and share history stay on '
+              'your device unless you choose otherwise.',
+              style: TextStyle(
+                  color: Colors.white, fontSize: 14, height: 1.4),
+            ),
+          ],
         ),
       );
-
-  Widget _promiseCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.gold.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.45)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const <Widget>[
-          Row(
-            children: <Widget>[
-              Icon(Icons.verified_outlined,
-                  color: AppColors.gold, size: 22),
-              SizedBox(width: 8),
-              Text(
-                'Privacy-first by design',
-                style: TextStyle(
-                    color: AppColors.gold,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15),
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
-          Text(
-            'No social media passwords stored. No selling user data. '
-            'No cross-app tracking. Drafts and share history stay on '
-            'your device unless you choose otherwise.',
-            style: TextStyle(
-                color: Colors.white, fontSize: 14, height: 1.4),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _statusRow({
     required IconData icon,
     required String title,
     required String status,
-    required bool ok,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: <Widget>[
-          Icon(icon, color: AppColors.gold, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500),
+  }) =>
+      Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: <Widget>[
+            Icon(icon, color: AppColors.gold, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500)),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.gold.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: AppColors.gold.withValues(alpha: 0.5)),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.gold.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: AppColors.gold.withValues(alpha: 0.5)),
+              ),
+              child: Text(status,
+                  style: const TextStyle(
+                      color: AppColors.gold,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
             ),
-            child: Text(
-              status,
-              style: const TextStyle(
-                  color: AppColors.gold,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+      );
 
   Widget _toggleCard({
     required IconData icon,
@@ -260,137 +283,137 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
     required String subtitle,
     required bool value,
     required ValueChanged<bool> onChanged,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: value
-                ? AppColors.gold.withValues(alpha: 0.6)
-                : AppColors.border),
-      ),
-      child: Row(
-        children: <Widget>[
-          Icon(icon, color: AppColors.gold, size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  }) =>
+      Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: value
+                  ? AppColors.gold.withValues(alpha: 0.6)
+                  : AppColors.border),
+        ),
+        child: Row(
+          children: <Widget>[
+            Icon(icon, color: AppColors.gold, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(title,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12)),
+                ],
+              ),
+            ),
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeThumbColor: AppColors.gold,
+            ),
+          ],
+        ),
+      );
+
+  Widget _timeoutCard() => Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Row(
               children: <Widget>[
-                Text(
-                  title,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                      color: AppColors.textMuted, fontSize: 12),
-                ),
+                Icon(Icons.timer_outlined,
+                    color: AppColors.gold, size: 20),
+                SizedBox(width: 10),
+                Text('Auto-lock after',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600)),
               ],
             ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: AppColors.gold,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _timeoutCard() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const Row(
-            children: <Widget>[
-              Icon(Icons.timer_outlined, color: AppColors.gold, size: 20),
-              SizedBox(width: 10),
-              Text(
-                'Auto-lock after',
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              children: <int>[1, 5, 10].map((int m) {
+                final bool selected = _lockTimeoutMinutes == m;
+                return ChoiceChip(
+                  label: Text('$m min',
+                      style: TextStyle(
+                          color: selected
+                              ? Colors.black
+                              : Colors.white,
+                          fontWeight: FontWeight.w600)),
+                  selected: selected,
+                  onSelected: (_) async {
+                    await AppLockService.instance.setTimeout(m);
+                    if (!mounted) return;
+                    setState(() => _lockTimeoutMinutes = m);
+                  },
+                  backgroundColor: AppColors.black,
+                  selectedColor: AppColors.gold,
+                  side: BorderSide(
+                      color: selected
+                          ? AppColors.gold
+                          : AppColors.border),
+                  showCheckmark: false,
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+                'Idle time only. Never locks while you are typing.',
                 style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            children: <int>[1, 5, 15].map((int m) {
-              final bool selected = _lockTimeoutMinutes == m;
-              return ChoiceChip(
-                label: Text('$m min',
-                    style: TextStyle(
-                        color: selected ? Colors.black : Colors.white,
-                        fontWeight: FontWeight.w600)),
-                selected: selected,
-                onSelected: (_) async {
-                  await AppLockService.instance.setTimeout(m);
-                  if (!mounted) return;
-                  setState(() => _lockTimeoutMinutes = m);
-                },
-                backgroundColor: AppColors.black,
-                selectedColor: AppColors.gold,
-                side: BorderSide(
-                    color: selected ? AppColors.gold : AppColors.border),
-                showCheckmark: false,
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Idle time only. Never locks while you are typing.',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
-          ),
-        ],
-      ),
-    );
-  }
+                    color: AppColors.textMuted, fontSize: 11)),
+          ],
+        ),
+      );
 
-  Widget _footnoteCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            'Sharing uses your phone\'s built-in share sheet. '
-            'Each app handles your post on its own end. 1Social '
-            'cannot see or confirm what is published after handoff.',
-            style: TextStyle(
-                color: AppColors.textMuted, fontSize: 12.5, height: 1.45),
-          ),
-          SizedBox(height: 10),
-          Text(
-            'For Snapchat and Nextdoor, the caption is copied to your '
-            'clipboard and the app is opened so you can paste it in.',
-            style: TextStyle(
-                color: AppColors.textMuted, fontSize: 12.5, height: 1.45),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _footnoteCard() => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Sharing uses your phone\'s built-in share sheet. '
+              'Each app handles your post on its own end. 1Social '
+              'cannot see or confirm what is published after handoff.',
+              style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 12.5,
+                  height: 1.45),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'For Snapchat and Nextdoor, the caption is copied to '
+              'your clipboard and the app is opened.',
+              style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 12.5,
+                  height: 1.45),
+            ),
+          ],
+        ),
+      );
 }

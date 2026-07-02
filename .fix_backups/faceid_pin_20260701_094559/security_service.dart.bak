@@ -1,0 +1,161 @@
+import 'dart:math';
+import 'package:flutter/widgets.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:local_auth/local_auth.dart';
+
+// Uses Hive for all persistence -- same as rest of app, proven to work.
+class SecurityService {
+  SecurityService._();
+  static final SecurityService instance = SecurityService._();
+
+  static const String _boxName   = 'security';
+  static const String _kPin      = 'pin';
+  static const String _kPinOn    = 'pinEnabled';
+  static const String _kFaceOn   = 'faceEnabled';
+  static const String _kTimeout  = 'timeout';
+
+  late Box _box;
+  final LocalAuthentication _auth = LocalAuthentication();
+
+  bool   _pinEnabled  = false;
+  bool   _faceEnabled = false;
+  int    _timeout     = 1;
+  String _pin         = '';
+
+  int       _pinFailures  = 0;
+  int       _faceFailures = 0;
+  DateTime? _lockoutUntil;
+
+  bool get pinEnabled     => _pinEnabled;
+  bool get faceEnabled    => _faceEnabled;
+  int  get timeoutMinutes => _timeout;
+  int  get pinFailures    => _pinFailures;
+  int  get faceFailures   => _faceFailures;
+  bool get anyLockEnabled => _pinEnabled || _faceEnabled;
+
+  bool get isLockedOut {
+    if (_lockoutUntil == null) return false;
+    if (DateTime.now().isAfter(_lockoutUntil!)) {
+      _lockoutUntil = null;
+      _pinFailures  = 0;
+      return false;
+    }
+    return true;
+  }
+
+  Duration get lockoutRemaining {
+    if (_lockoutUntil == null) return Duration.zero;
+    final r = _lockoutUntil!.difference(DateTime.now());
+    return r.isNegative ? Duration.zero : r;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------------
+  Future<void> load() async {
+    _box         = await Hive.openBox(_boxName);
+    _pinEnabled  = _box.get(_kPinOn,   defaultValue: false) as bool;
+    _faceEnabled = _box.get(_kFaceOn,  defaultValue: false) as bool;
+    _timeout     = _box.get(_kTimeout, defaultValue: 1)     as int;
+    _pin         = _box.get(_kPin,     defaultValue: '')    as String;
+  }
+
+  // ---------------------------------------------------------------------------
+  // PIN
+  // ---------------------------------------------------------------------------
+  String generatePin() =>
+      (100000 + Random.secure().nextInt(900000)).toString();
+
+  Future<void> enablePin(String pin) async {
+    await _box.put(_kPin,   pin);
+    await _box.put(_kPinOn, true);
+    _pin         = pin;
+    _pinEnabled  = true;
+    _pinFailures = 0;
+    _lockoutUntil = null;
+  }
+
+  Future<void> disablePin() async {
+    await _box.put(_kPin,   '');
+    await _box.put(_kPinOn, false);
+    _pin         = '';
+    _pinEnabled  = false;
+    _pinFailures = 0;
+    _lockoutUntil = null;
+  }
+
+  bool validatePin(String input) => _pin.isNotEmpty && _pin == input;
+
+  void recordPinFailure() {
+    _pinFailures++;
+    if (_pinFailures >= 5) {
+      final seconds = switch (_pinFailures) {
+        5 => 30,
+        6 => 60,
+        _ => 300,
+      };
+      _lockoutUntil =
+          DateTime.now().add(Duration(seconds: seconds));
+    }
+  }
+
+  void resetPinFailures() {
+    _pinFailures  = 0;
+    _lockoutUntil = null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Face ID
+  // ---------------------------------------------------------------------------
+  Future<bool> isBiometricAvailable() async {
+    try {
+      return await _auth.canCheckBiometrics ||
+          await _auth.isDeviceSupported();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> enableFaceId() async {
+    await _box.put(_kFaceOn, true);
+    _faceEnabled = true;
+  }
+
+  Future<void> disableFaceId() async {
+    await _box.put(_kFaceOn, false);
+    _faceEnabled = false;
+  }
+
+  Future<bool> authenticateFace() async {
+    try {
+      final canCheck = await isBiometricAvailable();
+      if (!canCheck) return false;
+      return await _auth.authenticate(
+        localizedReason: 'Unlock 1Social',
+        options: const AuthenticationOptions(
+          stickyAuth: false,
+          biometricOnly: false,
+        ),
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => false,
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void recordFaceFailure() => _faceFailures++;
+  void resetFaceFailures() => _faceFailures = 0;
+
+  // ---------------------------------------------------------------------------
+  // Timeout
+  // ---------------------------------------------------------------------------
+  Future<void> setTimeout(int minutes) async {
+    _timeout = minutes;
+    await _box.put(_kTimeout, minutes);
+  }
+
+  void recordActivity() {}
+  bool shouldLock(BuildContext context) => false;
+}

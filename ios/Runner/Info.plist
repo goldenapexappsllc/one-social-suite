@@ -24,10 +24,22 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>instagram</string>
+		<string>twitter</string>
+		<string>pinterest</string>
+		<string>nextdoor</string>
+		<string>snapchat</string>
+		<string>tiktok</string>
+		<string>linkedin</string>
+		<string>fb</string>
+		<string>barcelona</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
-	<string>1Social uses Face ID to keep your drafts and connections private.</string>
+	<string></string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>1Social attaches a photo or video to your post. Your media stays on your device.</string>
 	<key>UIApplicationSceneManifest</key>
@@ -69,18 +81,6 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>instagram</string>
-		<string>twitter</string>
-		<string>pinterest</string>
-		<string>nextdoor</string>
-		<string>snapchat</string>
-		<string>tiktok</string>
-		<string>linkedin</string>
-		<string>fb</string>
-		<string>barcelona</string>
 	</array>
 </dict>
 </plist>

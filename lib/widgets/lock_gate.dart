@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/app_lock_service.dart';
-import 'lock_screen.dart';
+import '../screens/lock_screen.dart';
 
 /// Wraps the app. Watches lifecycle: when the app returns to the foreground
 /// after being backgrounded, it locks if the idle timeout has passed (and the
