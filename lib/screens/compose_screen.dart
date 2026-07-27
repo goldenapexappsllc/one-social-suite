@@ -10,6 +10,8 @@ import '../services/platform_suggester.dart';
 import '../theme/app_theme.dart';
 import '../models/draft.dart';
 import '../services/storage_service.dart';
+import 'ai_consent.dart';
+import 'ai_consent_modal.dart';
 import 'preview_screen.dart';
 
 class ComposeScreen extends StatefulWidget {
@@ -338,7 +340,20 @@ class _ComposeScreenState extends State<ComposeScreen> {
                         const Spacer(),
                         Switch(
                           value: _useAi,
-                          onChanged: (bool v) => setState(() => _useAi = v),
+                          onChanged: (bool v) async {
+                            if (v) {
+                              final bool hasConsent = await AiConsentService
+                                  .instance
+                                  .hasCurrentConsent();
+                              if (!hasConsent) {
+                                if (!context.mounted) return;
+                                final bool accepted =
+                                    await showAiConsentModal(context);
+                                if (!accepted) return;
+                              }
+                            }
+                            setState(() => _useAi = v);
+                          },
                           activeThumbColor: AppColors.gold,
                         ),
                       ],

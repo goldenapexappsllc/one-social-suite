@@ -581,6 +581,17 @@ class _PreviewScreenState extends State<PreviewScreen> {
                   ),
               ],
             ),
+            if (widget.draft.useAi) ...<Widget>[
+              const SizedBox(height: 4),
+              const Text(
+                'AI can make mistakes. Review your post before submitting.',
+                style: TextStyle(
+                  color: AppColors.gold,
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             Row(
               children: <Widget>[
