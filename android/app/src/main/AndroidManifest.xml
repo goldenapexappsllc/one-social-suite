@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="1Social"
         android:name="${applicationName}"
@@ -40,6 +42,63 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+
+        <!-- Explicit package-name visibility for the 9-platform gateway.
+             This is the correct declaration type when the app needs to
+             query/launch another app by its exact package name via
+             PackageManager.getLaunchIntentForPackage() (see MainActivity.kt),
+             as opposed to the <intent> scheme-matching declarations below,
+             which only grant visibility if the target app's own exported
+             intent-filter happens to match the declared scheme exactly. -->
+        <package android:name="com.instagram.android"/>
+        <package android:name="com.twitter.android"/>
+        <package android:name="com.pinterest"/>
+        <package android:name="com.nextdoor"/>
+        <package android:name="com.snapchat.android"/>
+        <package android:name="com.zhiliaoapp.musically"/>
+        <package android:name="com.linkedin.android"/>
+        <package android:name="com.facebook.katana"/>
+        <package android:name="com.instagram.barcelona"/>
+
+        <!-- Scheme-based declarations, kept as a secondary path in case
+             any of these platforms are ever switched back to deep-link
+             scheme launching instead of package-based launching. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="instagram"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="twitter"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="pinterest"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="nextdoor"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="snapchat"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="tiktok"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="linkedin"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="fb"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="barcelona"/>
         </intent>
     </queries>
 </manifest>

@@ -44,3 +44,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 .fix_backups/
+
+# Signing secrets -- never commit these
+android/key.properties
+android/keystore/
