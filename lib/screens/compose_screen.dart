@@ -10,7 +10,11 @@ import '../services/platform_suggester.dart';
 import '../theme/app_theme.dart';
 import '../models/draft.dart';
 import '../services/storage_service.dart';
+import 'ai_consent.dart';
+import 'ai_consent_modal.dart';
 import 'preview_screen.dart';
+import 'subscription_screen.dart';
+import '../services/purchase_service.dart';
 
 class ComposeScreen extends StatefulWidget {
   const ComposeScreen({super.key, this.initialDraft});
@@ -26,11 +30,24 @@ class _ComposeScreenState extends State<ComposeScreen> {
   static const Color _warn = Color(0xFFFF8A3D);
 
   final TextEditingController _text = TextEditingController();
+  final TextEditingController _customLanguage = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   final Set<String> _selected = <String>{};
   final FocusNode _textFocus = FocusNode();
 
   Tone _tone = Tone.casual;
+  String? _targetLanguage;
+
+  static const List<String> _languageOptions = <String>[
+    'Spanish',
+    'French',
+    'German',
+    'Portuguese',
+    'Arabic',
+    'Chinese',
+    'Japanese',
+    'Hindi',
+  ];
   bool _useAi = false;
   String? _mediaPath;
   bool _isVideo = false;
@@ -53,6 +70,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
   void dispose() {
     _text.dispose();
     _textFocus.dispose();
+    _customLanguage.dispose();
     super.dispose();
   }
 
@@ -163,6 +181,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
             mediaPath: _mediaPath,
             isVideo: _isVideo,
             useAi: _useAi,
+            targetLanguage: _targetLanguage,
           ),
         ),
       ),
@@ -219,7 +238,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
                       const SizedBox(height: 4),
                       const Center(
                         child: Text(
-                          'Write Once. Share Everywhere.',
+                          'Write Once. Post Anywhere. In English or Almost Any Language.',
                           style: TextStyle(
                               color: AppColors.textMuted, fontSize: 13),
                         ),
@@ -299,6 +318,64 @@ class _ComposeScreenState extends State<ComposeScreen> {
                       ),
                       const SizedBox(height: 22),
 
+                      _label('Translate to (optional)'),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Write in any language. AI Assist can post it in a '
+                        'different one -- pick a language below, or leave '
+                        'this off to keep your original language.',
+                        style: TextStyle(
+                            color: AppColors.textMuted, fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: <Widget>[
+                          _chip(
+                            label: 'Off',
+                            selected: _targetLanguage == null,
+                            onTap: () =>
+                                setState(() => _targetLanguage = null),
+                          ),
+                          ..._languageOptions.map((String lang) {
+                            return _chip(
+                              label: lang,
+                              selected: _targetLanguage == lang,
+                              onTap: () =>
+                                  setState(() => _targetLanguage = lang),
+                            );
+                          }),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 4),
+                        child: TextField(
+                          controller: _customLanguage,
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 14),
+                          cursorColor: AppColors.gold,
+                          decoration: const InputDecoration(
+                            hintText: 'Or type any other language...',
+                            hintStyle:
+                                TextStyle(color: AppColors.textMuted),
+                            border: InputBorder.none,
+                          ),
+                          onChanged: (String v) => setState(() {
+                            _targetLanguage =
+                                v.trim().isEmpty ? null : v.trim();
+                          }),
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+
                       // --- AI Assist (BETA) ---
               Container(
                 padding: const EdgeInsets.all(14),
@@ -338,7 +415,36 @@ class _ComposeScreenState extends State<ComposeScreen> {
                         const Spacer(),
                         Switch(
                           value: _useAi,
-                          onChanged: (bool v) => setState(() => _useAi = v),
+                          onChanged: (bool v) async {
+                            if (v) {
+                              final bool hasConsent = await AiConsentService
+                                  .instance
+                                  .hasCurrentConsent();
+                              if (!hasConsent) {
+                                if (!context.mounted) return;
+                                final bool accepted =
+                                    await showAiConsentModal(context);
+                                if (!accepted) return;
+                              }
+                              final bool hasSubscription =
+                                  await PurchaseService.instance
+                                      .hasActiveSubscription();
+                              if (!hasSubscription) {
+                                if (!context.mounted) return;
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        const SubscriptionScreen(),
+                                  ),
+                                );
+                                final bool nowSubscribed =
+                                    await PurchaseService.instance
+                                        .hasActiveSubscription();
+                                if (!nowSubscribed) return;
+                              }
+                            }
+                            setState(() => _useAi = v);
+                          },
                           activeThumbColor: AppColors.gold,
                         ),
                       ],
@@ -346,7 +452,13 @@ class _ComposeScreenState extends State<ComposeScreen> {
                     const SizedBox(height: 4),
                     Text(
                       _useAi
-                          ? 'Your text is sent to OpenAI to enhance each caption.'
+                          ? (_selected.isEmpty
+                              ? 'Your text is sent to OpenAI to enhance each '
+                                  'caption. Each platform you select uses 1 '
+                                  'AI Assist.'
+                              : 'This post will use ${_selected.length} AI '
+                                  'Assist${_selected.length == 1 ? '' : 's'} '
+                                  '-- 1 per platform selected.')
                           : 'Off. Captions are shaped on your device only.',
                       style: const TextStyle(
                           color: AppColors.textMuted, fontSize: 12),

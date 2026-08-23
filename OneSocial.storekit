@@ -1,0 +1,205 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "DA7416FA",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6799737742",
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_developerTeamID" : "HKRUGT9Q6Q",
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 808432925.00865304,
+    "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionBundleGroups" : [
+
+  ],
+  "subscriptionGroups" : [
+    {
+      "id" : "22306101",
+      "localizations" : [
+        {
+          "description" : "",
+          "displayName" : "AI Assist Plus",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "AI Assist",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "8.99",
+              "displayPrice" : "8.99",
+              "internalID" : "6800941024_BILLED_UPFRONT",
+              "isEnabled" : true
+            }
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "8.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6800941024",
+          "introductoryOffer" : {
+            "billingPlanType" : "BILLED_UPFRONT",
+            "internalID" : "eyJzIjoiNjgwMDk0MTAyNCIsImQiOjE3ODY2MDQ0MDAsImkiOiJVUyIsInQiOiIiLCJwIjoiMCJ9",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P2W"
+          },
+          "introductoryOffers" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "internalID" : "eyJzIjoiNjgwMDk0MTAyNCIsImQiOjE3ODY2MDQ0MDAsImkiOiJVUyIsInQiOiIiLCJwIjoiMCJ9",
+              "numberOfPeriods" : 1,
+              "paymentMode" : "free",
+              "subscriptionPeriod" : "P2W"
+            }
+          ],
+          "localizations" : [
+
+          ],
+          "productID" : "com.goldenapexapps.onesocial.aiassist.plus",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "AI Assist Plus",
+          "subscriptionGroupID" : "22306101",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "17.99",
+              "displayPrice" : "17.99",
+              "internalID" : "6800929390_BILLED_UPFRONT",
+              "isEnabled" : true
+            }
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "17.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6800929390",
+          "introductoryOffer" : {
+            "billingPlanType" : "BILLED_UPFRONT",
+            "internalID" : "eyJzIjoiNjgwMDkyOTM5MCIsImQiOjE3ODY2MDQ0MDAsImkiOiJVUyIsInQiOiIiLCJwIjoiMCJ9",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P2W"
+          },
+          "introductoryOffers" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "internalID" : "eyJzIjoiNjgwMDkyOTM5MCIsImQiOjE3ODY2MDQ0MDAsImkiOiJVUyIsInQiOiIiLCJwIjoiMCJ9",
+              "numberOfPeriods" : 1,
+              "paymentMode" : "free",
+              "subscriptionPeriod" : "P2W"
+            }
+          ],
+          "localizations" : [
+
+          ],
+          "productID" : "com.goldenapexapps.onesocial.aiassist.pro",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "AI Assist Pro",
+          "subscriptionGroupID" : "22306101",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "4.99",
+              "displayPrice" : "4.99",
+              "internalID" : "6801238661_BILLED_UPFRONT",
+              "isEnabled" : true
+            }
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 3,
+          "internalID" : "6801238661",
+          "introductoryOffer" : {
+            "billingPlanType" : "BILLED_UPFRONT",
+            "internalID" : "eyJzIjoiNjgwMTIzODY2MSIsImQiOjE3ODY2MDQ0MDAsImkiOiJVUyIsInQiOiIiLCJwIjoiMCJ9",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P2W"
+          },
+          "introductoryOffers" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "internalID" : "eyJzIjoiNjgwMTIzODY2MSIsImQiOjE3ODY2MDQ0MDAsImkiOiJVUyIsInQiOiIiLCJwIjoiMCJ9",
+              "numberOfPeriods" : 1,
+              "paymentMode" : "free",
+              "subscriptionPeriod" : "P2W"
+            }
+          ],
+          "localizations" : [
+
+          ],
+          "productID" : "com.goldenapexapps.onesocial.aiassist.starter",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "AI Assist Starter",
+          "subscriptionGroupID" : "22306101",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "subscriptionSuiteGroups" : [
+
+  ],
+  "version" : {
+    "major" : 6,
+    "minor" : 3
+  }
+}

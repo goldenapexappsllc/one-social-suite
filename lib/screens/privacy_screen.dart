@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../app_name.dart';
 import 'policy_screen.dart';
 import '../services/app_lock_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyScreen extends StatefulWidget {
   const PrivacyScreen({super.key});
@@ -46,7 +48,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
               ),
               const SizedBox(height: 24),
 
-              _sectionLabel('The 1Social Promise'),
+              _sectionLabel('The $kAppName Promise'),
               const SizedBox(height: 8),
               _promiseCard(),
               const SizedBox(height: 24),
@@ -76,13 +78,18 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
               _sectionLabel('Security'),
               const SizedBox(height: 8),
 
+              // Report a concern -- required by Google Play's Child
+              // Safety Standards policy for apps in the Social category.
+              _reportConcernCard(),
+              const SizedBox(height: 12),
+
               // Face ID toggle
               _toggleCard(
                 icon: Icons.face_outlined,
-                title: 'Face ID lock',
+                title: '$kBiometricName lock',
                 subtitle: _faceIdEnabled
-                    ? 'Required to open 1Social'
-                    : 'Tap to require Face ID on app open',
+                    ? 'Required to open $kAppName'
+                    : 'Tap to require $kBiometricName on app open',
                 value: _faceIdEnabled,
                 onChanged: (bool v) async {
                   await AppLockService.instance.setEnabled(v);
@@ -104,7 +111,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                     border: Border.all(
                         color: AppColors.gold.withValues(alpha: 0.3)),
                   ),
-                  child: const Column(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Row(
@@ -121,10 +128,10 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                       ),
                       SizedBox(height: 8),
                       Text(
-                        'Face ID is the primary unlock method. If Face ID '
-                        'is unavailable, iOS will prompt for your iPhone '
-                        'passcode -- the same secure system used by Apple '
-                        'Pay and the App Store.',
+                        '$kBiometricName is the primary unlock method. If it '
+                        'is unavailable, your device will prompt for your '
+                        'passcode -- the same secure system your device uses '
+                        'for payments and app downloads.',
                         style: TextStyle(
                             color: AppColors.textMuted,
                             fontSize: 12,
@@ -145,11 +152,11 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.border),
                 ),
-                child: const Text(
-                  '\uD83D\uDD12 Keep your iPhone locked to ensure your '
-                  '1Social data stays protected from anyone who may '
+                child: Text(
+                  '\uD83D\uDD12 Keep your device locked to ensure your '
+                  '$kAppName data stays protected from anyone who may '
                   'have access to your device.\n\n'
-                  'Face ID provides an additional layer of security '
+                  '$kBiometricName provides an additional layer of security '
                   'beyond the standard lock screen, helping safeguard '
                   'your information at all times.',
                   style: TextStyle(
@@ -230,6 +237,52 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                   color: Colors.white, fontSize: 14, height: 1.4),
             ),
           ],
+        ),
+      );
+
+  Widget _reportConcernCard() => Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: InkWell(
+          onTap: () async {
+            final Uri emailUri = Uri(
+              scheme: 'mailto',
+              path: 'info@goldenapexapps.com',
+              query: 'subject=Report a Concern',
+            );
+            await launchUrl(emailUri);
+          },
+          child: Row(
+            children: <Widget>[
+              const Icon(Icons.flag_outlined,
+                  color: AppColors.gold, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const <Widget>[
+                    Text('Report a Concern',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600)),
+                    SizedBox(height: 2),
+                    Text('info@goldenapexapps.com',
+                        style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right,
+                  color: AppColors.textMuted, size: 20),
+            ],
+          ),
         ),
       );
 
@@ -392,19 +445,19 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.border),
         ),
-        child: const Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
               'Sharing uses your phone\'s built-in share sheet. '
-              'Each app handles your post on its own end. 1Social '
+              'Each app handles your post on its own end. $kAppName '
               'cannot see or confirm what is published after handoff.',
               style: TextStyle(
                   color: AppColors.textMuted,
                   fontSize: 12.5,
                   height: 1.45),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Text(
               'For Snapchat and Nextdoor, the caption is copied to '
               'your clipboard and the app is opened.',

@@ -9,6 +9,7 @@ import '../services/ai_caption_formatter.dart';
 import '../services/caption_formatter.dart';
 import '../services/share_service.dart';
 import '../services/storage_service.dart';
+import '../services/purchase_service.dart';
 import '../theme/app_theme.dart';
 
 class PreviewScreen extends StatefulWidget {
@@ -105,11 +106,20 @@ class _PreviewScreenState extends State<PreviewScreen> {
   Future<void> _enhanceWithAi() async {
     setState(() => _aiThinking = true);
     for (final PlatformDef p in _platforms) {
-      final String ai =
-          await _ai.formatAsync(widget.draft.text, p, widget.draft.tone);
+      final bool canCall = await PurchaseService.instance.canMakeCall();
+      if (!canCall) {
+        if (mounted) {
+          _snack('Monthly AI Assist limit reached -- remaining captions left as-is.');
+        }
+        break;
+      }
+      final String ai = await _ai.formatAsync(
+          widget.draft.text, p, widget.draft.tone,
+          targetLanguage: widget.draft.targetLanguage);
       if (!mounted) return;
       if (ai.isNotEmpty && _controllers[p.id] != null) {
         setState(() => _controllers[p.id]!.text = ai);
+        await PurchaseService.instance.recordCallUsed();
       }
     }
     if (mounted) setState(() => _aiThinking = false);
@@ -516,20 +526,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
                         color: AppColors.gold,
                         fontSize: 20,
                         fontWeight: FontWeight.bold)),
-                const Spacer(),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.black,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: AppColors.gold.withValues(alpha: 0.5)),
-                  ),
-                  child: const Text('Copy + Open',
-                      style: TextStyle(
-                          color: AppColors.textMuted, fontSize: 11)),
-                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -581,6 +577,17 @@ class _PreviewScreenState extends State<PreviewScreen> {
                   ),
               ],
             ),
+            if (widget.draft.useAi) ...<Widget>[
+              const SizedBox(height: 4),
+              const Text(
+                'AI can make mistakes. Review your post before submitting.',
+                style: TextStyle(
+                  color: AppColors.gold,
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             Row(
               children: <Widget>[

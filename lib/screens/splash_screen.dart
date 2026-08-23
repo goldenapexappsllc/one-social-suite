@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_logo.dart';
@@ -63,8 +65,10 @@ class _SplashScreenState extends State<SplashScreen>
         opacity: _fade,
         child: SizedBox.expand(
           child: Image.asset(
-            'assets/images/splash.png',
-            fit: BoxFit.cover,
+            Platform.isIOS
+                ? 'assets/images/splash.png'
+                : 'assets/images/splash_android.png',
+            fit: BoxFit.contain,
             errorBuilder:
                 (BuildContext context, Object error, StackTrace? stack) {
               return const _FallbackSplash();

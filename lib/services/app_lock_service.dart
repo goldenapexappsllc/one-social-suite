@@ -1,3 +1,4 @@
+import '../app_name.dart';
 import 'package:flutter/widgets.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -60,7 +61,7 @@ class AppLockService {
           await _auth.canCheckBiometrics || await _auth.isDeviceSupported();
       if (!canCheck) return true;
       return await _auth.authenticate(
-        localizedReason: 'Unlock 1Social',
+        localizedReason: 'Unlock $kAppName',
         options: const AuthenticationOptions(
           stickyAuth: false,
           biometricOnly: false, // iOS passcode fallback enabled

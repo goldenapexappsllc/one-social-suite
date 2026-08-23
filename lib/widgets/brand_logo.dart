@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-/// Displays the 1Social horizontal lockup. Falls back to a styled gold
+/// Displays the 1PrivateSocial horizontal lockup. Falls back to a styled gold
 /// "1" placeholder if assets/images/logo_mark.png is not present yet.
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.width = 300, this.height = 110});

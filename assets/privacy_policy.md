@@ -1,69 +1,62 @@
 # Privacy Policy
 
-**1Social**
-*Write Once. Share Everywhere.*
+*Effective August 9, 2026*
 
-Effective Date: June 16, 2026
+This same application is released under two names, one per platform: 1Social on Google Play, and 1PrivateSocial on the Apple App Store. They are identical in function, architecture, and data handling — this policy covers both equally. From here on, this document refers to either simply as "the App."
 
-## 1. Overview
+## Who we are
 
-1Social is a private social media composing tool. It helps you write a single message, shape it for different social platforms, and hand it off to those platforms using your device's built-in sharing features. 1Social does not create accounts, does not log in to social platforms on your behalf, and does not connect to any social media platform's servers. The app runs locally on your device and keeps your information with you.
+The App is developed by GoldenApexApps LLC, an independent software developer. Questions about this policy or the App can be sent to info@goldenapexapps.com.
 
-## 2. How Sharing Works
+## The short version
 
-When you choose to share, 1Social does one of two things, depending on the platform:
+The App does not require an account. It does not collect, store, or sell your personal data on any server we operate. Everything you write and every platform connection you make lives on your device, under your control. The only exception is a single optional feature (AI Assist), described below, which only activates if you turn it on yourself.
 
-- For most platforms (Instagram, X, Facebook, LinkedIn, Pinterest, TikTok), the app passes your prepared caption and any attached photo or video to your device's native share sheet. You then select the destination app and complete the post yourself within that app.
+## Information we do not collect
 
-- For Snapchat and Nextdoor, which do not offer a sharing interface, the app copies your caption to your device clipboard and opens the app so you can paste and post it yourself.
+We do not require you to create an account, and we do not collect your name, email address, phone number, or any other identifying information to use the App. We do not use advertising SDKs, and we do not use third-party analytics or behavioral tracking of any kind. There is no backend server that stores your posts, drafts, or platform connections.
 
-Because publishing happens inside each platform's own app, 1Social cannot see, record, or confirm what is ultimately posted. Once a post is handed off, it is governed entirely by that platform.
+## Information stored on your device
 
-## 3. Information We Process
+To function, the App stores the following locally on your device only:
+- Post drafts and content you write within the App
+- App preferences and settings, such as lock timeout and subscription status
+- Biometric lock state, verified through your device's own Face ID, Touch ID, fingerprint, or passcode system — the App never receives or stores your biometric data itself; that is handled entirely by your device's operating system
 
-1Social does not collect, transmit, sell, or retain your personal information on any server. We operate no servers. The app processes the following only on your device, and only to perform its function:
+This information never leaves your device unless you personally choose to copy and share a post to a social platform of your choice. The App does not connect to social platforms via API and does not store any platform login credentials.
 
-- The text you type, the tone you select, and any photo or video you attach, used to prepare your post and held on your device.
+## AI Assist (optional, opt-in only)
 
-- Drafts and a local share history, if you save them, are stored only on your device and never uploaded.
+The App includes an optional caption-enhancement feature called AI Assist. This feature is off by default. If you choose to turn it on and use it:
+- The text you submit for enhancement is sent to our own proxy service, which forwards it to OpenAI's API to generate a response
+- This is the only circumstance under which any content you type is transmitted off your device
+- You are shown a clear consent step before this feature can be used for the first time
+- Use of this feature may be subject to a separate subscription or usage cost, disclosed in the App
 
-We do not collect, store, or transmit any of the following:
+We do not store the content you submit to AI Assist — it passes through our proxy to OpenAI's API and back to your device, without being logged or retained.
 
-- Social media passwords or login credentials. The app never asks for them.
-- OAuth tokens or account connections. The app does not connect to platform APIs.
-- Names, email addresses, or phone numbers.
-- Financial, billing, or payment information.
-- Geolocation data.
-- Device identifiers or advertising IDs.
-- Analytics, usage metrics, or behavioral tracking data.
-- Biometric data of any kind.
+## Age requirement
 
-## 4. Biometric Authentication
+The App is intended for users age 16 and older. We do not knowingly collect personal information from anyone under 16. Because the App collects no personal information by design, this risk is minimal regardless of user age.
 
-1Social offers optional biometric authentication (such as Face ID or Touch ID) for local access control. This feature is entirely user-controlled and can be enabled or disabled at any time within the app. A standard device passcode fallback is always available.
+## Data retention and deletion
 
-We do not access, collect, process, or store your biometric data. All biometric authentication is performed exclusively by your device's operating system through native frameworks (such as Apple's LocalAuthentication framework and the Secure Enclave). The app receives only a simple "pass" or "fail" result from the operating system.
+Since all app data is stored exclusively on your device, deleting the App removes all associated data immediately. There is no account to delete and no server-side copy to request removal of, because none exists.
 
-## 5. Data Storage, Retention, and Deletion
+## Security
 
-Any drafts, share history, and settings you create are stored locally on your device. You can delete drafts and history within the app at any time. When you delete the app from your device, all associated local data is permanently removed. We do not own, lease, or operate external servers that store your content or personal data, so there is nothing for us to retain or delete on our end.
+Sensitive local data is protected using your device's built-in biometric authentication through your platform's standard operating system security frameworks. We do not implement our own credential storage or transmission system, which avoids an entire category of risk that comes with maintaining one.
 
-## 6. Third-Party Platforms
+## California privacy rights (CCPA)
 
-When you hand a post off to a social platform, that platform's own privacy policy and terms of service govern how it processes your content from that point forward. 1Social has no control over, and assumes no responsibility for, the data practices of third-party platforms. We encourage you to review the privacy policies of the platforms you use.
+If you are a California resident, the California Consumer Privacy Act gives you certain rights regarding personal information collected about you, including the right to know what is collected, the right to request deletion, and the right to opt out of the sale of personal information.
 
-## 7. Data Sharing and Transfers
+Because the App does not collect, store, or sell your personal information on any server we operate, these rights are, in practice, already satisfied by our architecture. The one narrow exception is AI Assist, described above — when you choose to use it, your text is processed by OpenAI to generate a response, but it is not stored by GoldenApexApps LLC afterward.
 
-We do not sell, share, rent, lease, or transmit any user data to third parties, advertisers, or data brokers. The app contains no advertising software and no third-party tracking software. The only data that leaves your device is the content you yourself choose to share, sent through your device's own sharing features to the app you select.
+## Changes to this policy
 
-## 8. Children's Privacy
+If this policy changes, the effective date at the top of this page will be updated, and material changes will be reflected in the App's store listing update notes.
 
-1Social is not directed to, or intended for use by, individuals under the age of 13. We do not knowingly collect or process information from children. Because the app collects no personal information from anyone, it does not knowingly collect information from children.
+## Contact
 
-## 9. Changes to This Privacy Policy
-
-We may modify this Privacy Policy from time to time. If material changes are made, we will update the "Effective Date" above and provide notice within the app. Your continued use of the app following any update constitutes acceptance of the revised policy.
-
-## 10. Contact Information
-
-For questions regarding this Privacy Policy, contact: info@1socialsuite.com
+Questions about this policy or how the App handles information can be sent to info@goldenapexapps.com.

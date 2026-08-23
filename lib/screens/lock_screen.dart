@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/app_lock_service.dart';
 import '../theme/app_theme.dart';
+import '../app_name.dart';
 import '../widgets/brand_logo.dart';
 
 /// Lock screen -- Face ID with automatic iOS passcode fallback.
@@ -59,15 +60,15 @@ class _LockScreenState extends State<LockScreen> {
               const Icon(Icons.lock_outline,
                   color: AppColors.gold, size: 52),
               const SizedBox(height: 16),
-              const Text('1Social is locked',
+              Text('$kAppName is locked',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
                       fontWeight: FontWeight.w700)),
               const SizedBox(height: 10),
-              const Text(
-                'Use Face ID or your iPhone passcode to unlock.',
+              Text(
+                'Use $kBiometricName or your $kPasscodeName to unlock.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: AppColors.textMuted, fontSize: 14),

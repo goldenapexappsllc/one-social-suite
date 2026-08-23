@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 
-/// 1Social brand theme — black & gold.
-/// Gold values sampled directly from the logo art for an exact match.
+/// 1PrivateSocial brand theme — black & gold.
+/// Gold values matched to goldenapexapps.com's site palette for full
+/// cross-platform brand consistency (website, iOS, Android all share
+/// the exact same gold tones).
 class AppColors {
   AppColors._();
 
   static const Color black = Color(0xFF000000);
   static const Color surface = Color(0xFF141414);
   static const Color surfaceAlt = Color(0xFF1A1A1A);
-  static const Color gold = Color(0xFFF5CC1F);      // logo body gold
-  static const Color goldDeep = Color(0xFFD5990C);  // logo shadow gold
-  static const Color goldGlow = Color(0xFFFDE42E);  // logo highlight gold
+  static const Color gold = Color(0xFFC99A2E);      // site --gold
+  static const Color goldDeep = Color(0xFF8A6A1F);  // deeper shadow gold
+  static const Color goldGlow = Color(0xFFF2D27A);  // site --gold2, highlight
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textMuted = Color(0xFF9E9E9E);
-  static const Color border = Color(0x33F5CC1F);    // gold @ 20%
+  static const Color border = Color(0x33C99A2E);    // gold @ 20%
 }
 
 class AppTheme {

@@ -1,7 +1,7 @@
 name: one_social_suite
 description: "Write once. Share smarter. A private social command center."
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.0+13
 
 environment:
   sdk: ^3.12.0
@@ -18,6 +18,8 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   http: ^1.6.0
+  in_app_purchase: ^3.3.0
+  in_app_purchase_android: ^0.5.2
 
 dev_dependencies:
   flutter_test:

@@ -3,53 +3,52 @@ import 'package:http/http.dart' as http;
 import '../models/platform_def.dart';
 import '../models/tone.dart';
 
-/// BETA: AI-powered caption formatter using OpenAI.
+/// AI-powered caption formatter, routed through GoldenApexApps LLC's
+/// own proxy rather than calling OpenAI directly. The app never holds
+/// a real OpenAI key -- only a proxy URL and an app-only shared secret.
 ///
-/// WARNING: For TestFlight beta only. The API key is provided at build time
-/// and can be extracted from the binary. Never ship to the public App Store
-/// with a baked-in key - replace with a backend proxy first.
-///
-/// Implements the same contract as RulesCaptionFormatter so it drops in with
-/// zero UI changes. On any error, returns an empty string so the caller can
-/// fall back to the rules engine.
+/// Implements the same contract as RulesCaptionFormatter so it drops in
+/// with zero UI changes. On any error, returns an empty string so the
+/// caller can fall back to the rules engine.
 class AICaptionFormatter {
   const AICaptionFormatter();
 
-  static const String _apiKey = String.fromEnvironment(
-    'OPENAI_KEY',
+  static const String _proxyUrl = String.fromEnvironment(
+    'AI_PROXY_URL',
     defaultValue: '',
   );
 
-  static const String _endpoint = 'https://api.openai.com/v1/chat/completions';
+  static const String _appSharedSecret = String.fromEnvironment(
+    'APP_SHARED_SECRET',
+    defaultValue: '',
+  );
 
-  bool get isConfigured => _apiKey.isNotEmpty;
+  bool get isConfigured => _proxyUrl.isNotEmpty && _appSharedSecret.isNotEmpty;
 
   Future<String> formatAsync(
-      String text, PlatformDef platform, Tone tone) async {
-    if (_apiKey.isEmpty || text.trim().isEmpty) return '';
+      String text, PlatformDef platform, Tone tone,
+      {String? targetLanguage}) async {
+    if (!isConfigured || text.trim().isEmpty) return '';
 
-    final String prompt = _buildPrompt(text, platform, tone);
+    final String prompt = _buildPrompt(text, platform, tone, targetLanguage);
     const String systemMessage =
         'You are a social media copywriter. Rewrite the message for a specific '
-        'platform. Return ONLY the rewritten caption: no quotes, no preamble, '
-        'no notes.';
+        'platform. If a target language is specified, write the rewritten '
+        'caption entirely in that language -- otherwise keep the same '
+        'language as the original message. Return ONLY the rewritten '
+        'caption: no quotes, no preamble, no notes.';
 
     try {
       final http.Response res = await http
           .post(
-            Uri.parse(_endpoint),
+            Uri.parse(_proxyUrl),
             headers: <String, String>{
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer $_apiKey',
+              'x-app-secret': _appSharedSecret,
             },
-            body: jsonEncode(<String, dynamic>{
-              'model': 'gpt-4o-mini',
-              'messages': <Map<String, String>>[
-                <String, String>{'role': 'system', 'content': systemMessage},
-                <String, String>{'role': 'user', 'content': prompt},
-              ],
-              'max_tokens': 400,
-              'temperature': 0.7,
+            body: jsonEncode(<String, String>{
+              'systemMessage': systemMessage,
+              'prompt': prompt,
             }),
           )
           .timeout(const Duration(seconds: 20));
@@ -73,7 +72,8 @@ class AICaptionFormatter {
     }
   }
 
-  String _buildPrompt(String text, PlatformDef p, Tone tone) {
+  String _buildPrompt(
+      String text, PlatformDef p, Tone tone, String? targetLanguage) {
     final String style = switch (p.id) {
       'x' => 'short, sharp, max 280 characters, at most 2 hashtags',
       'linkedin' =>
@@ -86,9 +86,17 @@ class AICaptionFormatter {
       'snapchat' => 'very short and casual',
       _ => 'clear and engaging',
     };
+    final String languageLine = (targetLanguage != null &&
+            targetLanguage.trim().isNotEmpty)
+        ? 'Target language: $targetLanguage -- write the rewritten caption '
+            'entirely in this language, regardless of the language the '
+            'original message was written in.\n'
+        : '';
+
     return 'Platform: ${p.name}\n'
         'Tone: ${tone.label}\n'
         'Style guidance: $style\n'
+        '$languageLine'
         'Keep it under ${p.charLimit} characters.\n\n'
         'Message to rewrite:\n$text';
   }

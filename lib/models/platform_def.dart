@@ -17,6 +17,7 @@ class PlatformDef {
     this.icon,
     this.glyph,
     this.deepLinkScheme,
+    this.androidPackage,
   });
 
   final String id;
@@ -25,7 +26,16 @@ class PlatformDef {
   final int charLimit;
   final IconData? icon;
   final String? glyph;
+
+  /// Used on iOS via canLaunchUrl/launchUrl. iOS's scheme check is coarse
+  /// (per-scheme, ignores host/path), so this works reliably there.
   final String? deepLinkScheme;
+
+  /// Used on Android via MainActivity's app_launcher method channel, which
+  /// opens the app directly by its package name. More reliable than
+  /// deepLinkScheme on Android, since many apps only register narrow,
+  /// path-specific intent filters rather than a generic "open app" scheme.
+  final String? androidPackage;
 
   bool get isOpenAndCopy => shareMode == ShareMode.openAndCopy;
 }

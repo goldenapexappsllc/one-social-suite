@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>1Social</string>
+	<string>1PrivateSocial</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>1Social</string>
+	<string>1PrivateSocial</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -39,9 +39,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
-	<string></string>
+	<string>1PrivateSocial uses Face ID to keep your drafts and posts private and secure.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>1Social attaches a photo or video to your post. Your media stays on your device.</string>
+	<string>1PrivateSocial attaches a photo or video to your post. Your media stays on your device.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

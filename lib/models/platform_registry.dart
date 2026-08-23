@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'platform_def.dart';
 
-/// 1Social platform registry -- 9 platforms, all using copy+open handoff.
+/// 1PrivateSocial platform registry -- 9 platforms, all using copy+open handoff.
 /// Copy+open is more reliable than the iOS share sheet for social apps:
 /// it copies the shaped caption to clipboard and opens the target app
 /// directly, so the user just pastes and posts. No share-sheet roulette.
@@ -16,6 +16,7 @@ class PlatformRegistry {
       charLimit: 2200,
       icon: Icons.camera_alt_outlined,
       deepLinkScheme: 'instagram://app',
+      androidPackage: 'com.instagram.android',
     ),
     PlatformDef(
       id: 'x',
@@ -24,6 +25,7 @@ class PlatformRegistry {
       charLimit: 280,
       glyph: 'X',
       deepLinkScheme: 'twitter://',
+      androidPackage: 'com.twitter.android',
     ),
     PlatformDef(
       id: 'pinterest',
@@ -32,6 +34,7 @@ class PlatformRegistry {
       charLimit: 500,
       icon: Icons.push_pin_outlined,
       deepLinkScheme: 'pinterest://',
+      androidPackage: 'com.pinterest',
     ),
     PlatformDef(
       id: 'nextdoor',
@@ -40,6 +43,7 @@ class PlatformRegistry {
       charLimit: 1000,
       glyph: 'n',
       deepLinkScheme: 'nextdoor://',
+      androidPackage: 'com.nextdoor',
     ),
     PlatformDef(
       id: 'snapchat',
@@ -48,6 +52,7 @@ class PlatformRegistry {
       charLimit: 250,
       glyph: 'SC',
       deepLinkScheme: 'snapchat://',
+      androidPackage: 'com.snapchat.android',
     ),
     PlatformDef(
       id: 'tiktok',
@@ -56,6 +61,7 @@ class PlatformRegistry {
       charLimit: 2200,
       icon: Icons.music_note,
       deepLinkScheme: 'tiktok://',
+      androidPackage: 'com.zhiliaoapp.musically',
     ),
     PlatformDef(
       id: 'linkedin',
@@ -64,6 +70,7 @@ class PlatformRegistry {
       charLimit: 3000,
       glyph: 'in',
       deepLinkScheme: 'linkedin://',
+      androidPackage: 'com.linkedin.android',
     ),
     PlatformDef(
       id: 'facebook',
@@ -72,6 +79,7 @@ class PlatformRegistry {
       charLimit: 63206,
       icon: Icons.facebook,
       deepLinkScheme: 'fb://',
+      androidPackage: 'com.facebook.katana',
     ),
     PlatformDef(
       id: 'threads',
@@ -80,6 +88,7 @@ class PlatformRegistry {
       charLimit: 500,
       glyph: '@',
       deepLinkScheme: 'barcelona://',
+      androidPackage: 'com.instagram.barcelona',
     ),
   ];
 
