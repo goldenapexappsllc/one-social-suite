@@ -52,6 +52,9 @@ class ShareService {
 
   /// Android path: open the app directly by its package name via the
   /// native method channel, rather than relying on a custom URL scheme.
+  /// Many apps (Facebook and Instagram included) only register narrow,
+  /// path-specific intent filters on Android, not a generic "open app"
+  /// scheme, which is why canLaunchUrl alone isn't reliable here.
   Future<ShareOutcome> _openAndCopyAndroid(PlatformDef platform) async {
     try {
       final bool opened = await _appLauncherChannel.invokeMethod<bool>(
