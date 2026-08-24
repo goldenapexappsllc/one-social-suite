@@ -440,6 +440,55 @@ class _PreviewScreenState extends State<PreviewScreen> {
     );
   }
 
+  /// Steps the preview one platform left or right. Bounds-checked so the
+  /// arrows simply do nothing at either end rather than overrunning.
+  void _step(int delta) {
+    final int target = _index + delta;
+    if (target < 0 || target >= _platforms.length) return;
+    _dismissKeyboard();
+    _page.animateToPage(
+      target,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  Widget _arrowNav(int count) {
+    if (count < 2) return const SizedBox.shrink();
+    final bool canBack = _index > 0;
+    final bool canFwd = _index < count - 1;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          IconButton(
+            onPressed: canBack ? () => _step(-1) : null,
+            icon: const Icon(Icons.chevron_left),
+            color: AppColors.gold,
+            disabledColor: AppColors.gold.withValues(alpha: 0.25),
+            iconSize: 26,
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Previous platform',
+          ),
+          Text(
+            '${_index + 1} of $count',
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 12.5),
+          ),
+          IconButton(
+            onPressed: canFwd ? () => _step(1) : null,
+            icon: const Icon(Icons.chevron_right),
+            color: AppColors.gold,
+            disabledColor: AppColors.gold.withValues(alpha: 0.25),
+            iconSize: 26,
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Next platform',
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _bottomBar(int count) {
     return SafeArea(
       top: false,
@@ -447,6 +496,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
         padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
         child: Column(
           children: <Widget>[
+            _arrowNav(count),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(

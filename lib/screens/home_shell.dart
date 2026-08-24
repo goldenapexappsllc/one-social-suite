@@ -4,6 +4,7 @@ import 'connections_screen.dart';
 import 'drafts_screen.dart';
 import 'history_screen.dart';
 import 'privacy_screen.dart';
+import '../services/storage_service.dart';
 import '../widgets/lock_gate.dart';
 
 class HomeShell extends StatefulWidget {
@@ -13,14 +14,32 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
+/// Tab positions, so the indexes aren't scattered as magic numbers.
+const int _kCompose = 0;
+const int _kAppInfo = 1;
+const int _kDrafts = 2;
+const int _kHistory = 3;
+
 class _HomeShellState extends State<HomeShell> {
-  int _index = 0;
+  late int _index;
   int _draftsRefreshKey  = 0;
   int _historyRefreshKey = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    // First launch lands on App Info so a new user reads how the app works
+    // before writing anything. Every launch after that opens on Compose.
+    final bool seen = StorageService.instance.hasSeenAppInfo;
+    _index = seen ? _kCompose : _kAppInfo;
+    if (!seen) {
+      StorageService.instance.markAppInfoSeen();
+    }
+  }
+
   void _onTap(int i) => setState(() {
-        if (i == 2) _draftsRefreshKey++;
-        if (i == 3) _historyRefreshKey++;
+        if (i == _kDrafts) _draftsRefreshKey++;
+        if (i == _kHistory) _historyRefreshKey++;
         _index = i;
       });
 
@@ -48,7 +67,7 @@ class _HomeShellState extends State<HomeShell> {
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.hub_outlined),
-              label: 'Connections',
+              label: 'App Info',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.drafts_outlined),

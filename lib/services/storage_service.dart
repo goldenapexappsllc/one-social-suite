@@ -12,6 +12,7 @@ class StorageService {
   static const String _stateBox = 'app_state';
   static const String _historyBox = 'history';
   static const String _kConnected = 'connected_platforms';
+  static const String _kSeenAppInfo = 'seen_app_info';
 
   late Box<dynamic> _drafts;
   late Box<dynamic> _state;
@@ -44,6 +45,17 @@ class StorageService {
   }
 
   int get draftCount => _drafts.length;
+
+  // ---- First run ----
+
+  /// False until the App Info tab has been shown once. Used to land new
+  /// users on the how-to page instead of straight into Compose.
+  bool get hasSeenAppInfo =>
+      _state.get(_kSeenAppInfo, defaultValue: false) as bool;
+
+  Future<void> markAppInfoSeen() async {
+    await _state.put(_kSeenAppInfo, true);
+  }
 
   // ---- Connection state (survives restart) ----
 
