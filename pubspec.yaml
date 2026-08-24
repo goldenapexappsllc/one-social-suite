@@ -1,7 +1,7 @@
 name: one_social_suite
 description: "Write once. Share smarter. A private social command center."
 publish_to: 'none'
-version: 1.0.0+13
+version: 1.0.0+14
 
 environment:
   sdk: ^3.12.0
