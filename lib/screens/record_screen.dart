@@ -42,6 +42,12 @@ class _RecordScreenState extends State<RecordScreen>
     with WidgetsBindingObserver {
   static const Color _warn = Color(0xFFE08A1E);
 
+  // Recording lengths in seconds. The row of chips scrolls sideways, so
+  // longer choices can be added here without anything running off screen.
+  static const List<int> _lengthOptions = <int>[
+    15, 30, 45, 60, 120, 180, 240, 300, 600,
+  ];
+
   // About 26 MB per minute. Good quality at 720p.
   static const int _bitrateHigh = 3500000;
   // About 14 MB per minute. Used when an app with a small file limit
@@ -486,40 +492,50 @@ class _RecordScreenState extends State<RecordScreen>
     );
   }
 
+  /// Length chips in a row that swipes sideways, so any number of choices
+  /// fits and nothing can run off the edge of the screen.
   Widget _chipRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: kRecordLengthOptions.map((int s) {
-        final bool sel = s == _chosen;
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: GestureDetector(
-            onTap: _recording ? null : () => setState(() => _chosen = s),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: sel ? AppColors.gold : const Color(0x99000000),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: sel ? AppColors.gold : AppColors.border,
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        itemCount: _lengthOptions.length,
+        separatorBuilder: (BuildContext context, int index) =>
+            const SizedBox(width: 8),
+        itemBuilder: (BuildContext context, int index) {
+          final int s = _lengthOptions[index];
+          final bool sel = s == _chosen;
+          return Center(
+            child: GestureDetector(
+              onTap: _recording ? null : () => setState(() => _chosen = s),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: sel ? AppColors.gold : const Color(0x99000000),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: sel ? AppColors.gold : AppColors.border,
+                  ),
                 ),
-              ),
-              child: Text(
-                _chipLabel(s),
-                style: TextStyle(
-                  color: sel
-                      ? AppColors.black
-                      : (_recording
-                          ? AppColors.textMuted
-                          : AppColors.textPrimary),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+                child: Text(
+                  _chipLabel(s),
+                  style: TextStyle(
+                    color: sel
+                        ? AppColors.black
+                        : (_recording
+                            ? AppColors.textMuted
+                            : AppColors.textPrimary),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        },
+      ),
     );
   }
 
