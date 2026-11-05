@@ -15,6 +15,7 @@ import '../services/storage_service.dart';
 import '../services/purchase_service.dart';
 import '../theme/app_theme.dart';
 import '../video_limits.dart';
+import 'subscription_screen.dart';
 
 class PreviewScreen extends StatefulWidget {
   const PreviewScreen({super.key, required this.draft});
@@ -126,7 +127,53 @@ class _PreviewScreenState extends State<PreviewScreen> {
     setState(() => _controllers[p.id]!.text = _formattedFor(p));
   }
 
+  /// Box shown when the plan has ended. The captions on screen are the
+  /// on-device ones, so nothing is lost.
+  Future<void> _showPlanEnded() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Your AI Assist plan has ended',
+            style: TextStyle(color: AppColors.gold)),
+        content: const Text(
+          'Your captions were shaped on your device instead. '
+          'Renew a plan to use AI Assist again.',
+          style: TextStyle(
+              color: AppColors.textMuted, fontSize: 14, height: 1.4),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Not now',
+                style: TextStyle(color: AppColors.textMuted)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const SubscriptionScreen(),
+                ),
+              );
+            },
+            child:
+                const Text('View plans', style: TextStyle(color: AppColors.gold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _enhanceWithAi() async {
+    final AiAssistTier? tier = await PurchaseService.instance.currentTier();
+    if (tier == null) {
+      await _showPlanEnded();
+      return;
+    }
+    AICaptionFormatter.lastFailure = null;
+    bool unreachable = false;
     setState(() => _aiThinking = true);
     for (final PlatformDef p in _platforms) {
       final bool canCall = await PurchaseService.instance.canMakeCall();
@@ -140,13 +187,29 @@ class _PreviewScreenState extends State<PreviewScreen> {
           widget.draft.text, p, widget.draft.tone,
           targetLanguage: widget.draft.targetLanguage);
       if (!mounted) return;
+      if (ai.isEmpty && widget.draft.text.trim().isNotEmpty) {
+        final String? why = AICaptionFormatter.lastFailure;
+        if (why == 'subscription_inactive') {
+          setState(() => _aiThinking = false);
+          await _loadCallsLeft();
+          await _showPlanEnded();
+          return;
+        }
+        if (why != null) unreachable = true;
+      }
       if (ai.isNotEmpty && _controllers[p.id] != null) {
         setState(() => _controllers[p.id]!.text = ai);
         await PurchaseService.instance.recordCallUsed();
         await _loadCallsLeft();
       }
     }
-    if (mounted) setState(() => _aiThinking = false);
+    if (mounted) {
+      setState(() => _aiThinking = false);
+      if (unreachable) {
+        _snack('AI Assist could not be reached, so some captions were '
+            'shaped on your device instead.');
+      }
+    }
   }
 
   void _showCopiedBanner(String platformName, {bool withVideo = false}) {
