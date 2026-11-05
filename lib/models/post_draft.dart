@@ -8,6 +8,8 @@ class PostDraft {
     required this.tone,
     this.mediaPath,
     this.isVideo = false,
+    this.videoName,
+    this.videoSeconds,
     this.useAi = false,
     this.targetLanguage,
   });
@@ -17,6 +19,12 @@ class PostDraft {
   final Tone tone;
   final String? mediaPath;
   final bool isVideo;
+
+  /// Name the user gave the video (null if none).
+  final String? videoName;
+
+  /// Length in seconds when recorded in-app (null for gallery videos).
+  final int? videoSeconds;
   final bool useAi;
 
   /// Null means "write in whatever language the original text is in."

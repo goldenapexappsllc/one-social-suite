@@ -35,11 +35,20 @@
 		<string>linkedin</string>
 		<string>fb</string>
 		<string>barcelona</string>
+		<string>whatsapp</string>
+		<string>tg</string>
+		<string>youtube</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera is used to record videos you choose to post. Videos stay on your phone.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>1PrivateSocial uses Face ID to keep your drafts and posts private and secure.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone records the sound in videos you choose to post. Audio stays on your phone.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Saves a copy of your video to your Photos. The app can only add videos, it cannot read your library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>1PrivateSocial attaches a photo or video to your post. Your media stays on your device.</string>
 	<key>UIApplicationSceneManifest</key>

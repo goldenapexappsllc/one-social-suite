@@ -1,5 +1,12 @@
 PODS:
+  - camera_avfoundation (0.0.1):
+    - Flutter
+  - disk_space_plus (0.0.1):
+    - Flutter
   - Flutter (1.0.0)
+  - gal (1.0.0):
+    - Flutter
+    - FlutterMacOS
   - image_picker_ios (0.0.1):
     - Flutter
   - in_app_purchase_storekit (0.0.1):
@@ -15,19 +22,32 @@ PODS:
     - FlutterMacOS
   - url_launcher_ios (0.0.1):
     - Flutter
+  - video_player_avfoundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
 
 DEPENDENCIES:
+  - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/darwin`)
+  - disk_space_plus (from `.symlinks/plugins/disk_space_plus/ios`)
   - Flutter (from `Flutter`)
+  - gal (from `.symlinks/plugins/gal/darwin`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - in_app_purchase_storekit (from `.symlinks/plugins/in_app_purchase_storekit/darwin`)
   - local_auth_darwin (from `.symlinks/plugins/local_auth_darwin/darwin`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
+  - video_player_avfoundation (from `.symlinks/plugins/video_player_avfoundation/darwin`)
 
 EXTERNAL SOURCES:
+  camera_avfoundation:
+    :path: ".symlinks/plugins/camera_avfoundation/darwin"
+  disk_space_plus:
+    :path: ".symlinks/plugins/disk_space_plus/ios"
   Flutter:
     :path: Flutter
+  gal:
+    :path: ".symlinks/plugins/gal/darwin"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
   in_app_purchase_storekit:
@@ -40,15 +60,21 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   url_launcher_ios:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
+  video_player_avfoundation:
+    :path: ".symlinks/plugins/video_player_avfoundation/darwin"
 
 SPEC CHECKSUMS:
+  camera_avfoundation: 968a9a5323c79a99c166ad9d7866bfd2047b5a9b
+  disk_space_plus: c9cfcc62a4ddb2b27e3486884c2e7c8c71171449
   Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+  gal: baecd024ebfd13c441269ca7404792a7152fde89
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
   in_app_purchase_storekit: 22cca7d08eebca9babdf4d07d0baccb73325d3c8
   local_auth_darwin: c3ee6cce0a8d56be34c8ccb66ba31f7f180aaebb
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
+  video_player_avfoundation: bc5f800d1e1c4f389bc5d51778a4f89dd1bf4a77
 
 PODFILE CHECKSUM: 288656d4464589360115d6f81dd5d8f559352730
 

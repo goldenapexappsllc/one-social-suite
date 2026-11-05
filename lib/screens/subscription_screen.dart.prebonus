@@ -1,0 +1,306 @@
+import 'package:flutter/material.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import '../services/purchase_service.dart';
+import '../theme/app_theme.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+/// The actual paywall. Shown when someone tries to use AI Assist without
+/// an active subscription, or reachable directly from Settings.
+class SubscriptionScreen extends StatefulWidget {
+  const SubscriptionScreen({super.key});
+
+  @override
+  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
+}
+
+class _SubscriptionScreenState extends State<SubscriptionScreen> {
+  bool _loading = true;
+  bool _purchaseInFlight = false;
+  AiAssistTier? _activeTier;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    await PurchaseService.instance.initialize();
+    final AiAssistTier? tier = await PurchaseService.instance.currentTier();
+    if (!mounted) return;
+    setState(() {
+      _activeTier = tier;
+      _loading = false;
+    });
+  }
+
+  Future<void> _buy(AiAssistTier tier) async {
+    setState(() => _purchaseInFlight = true);
+    try {
+      await PurchaseService.instance.purchaseTier(tier);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Couldn\'t start purchase: $e')),
+        );
+      }
+    }
+    if (!mounted) return;
+    setState(() => _purchaseInFlight = false);
+  }
+
+  Future<void> _restore() async {
+    setState(() => _purchaseInFlight = true);
+    await PurchaseService.instance.restorePurchases();
+    final AiAssistTier? tier = await PurchaseService.instance.currentTier();
+    if (!mounted) return;
+    setState(() {
+      _activeTier = tier;
+      _purchaseInFlight = false;
+    });
+  }
+
+  ProductDetails? _productFor(AiAssistTier tier) {
+    final List<ProductDetails> products = PurchaseService.instance.products;
+    for (final ProductDetails p in products) {
+      if (p.id == tier.productId) return p;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.black,
+      appBar: AppBar(
+        title: const Text('AI Assist'),
+        backgroundColor: AppColors.black,
+        foregroundColor: AppColors.gold,
+      ),
+      body: _loading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.gold))
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+              children: <Widget>[
+                const Text(
+                  'Choose a plan',
+                  style: TextStyle(
+                      color: AppColors.gold,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Every plan starts with a 2-week free trial. After the '
+                  'trial, your subscription renews monthly at the price '
+                  'shown unless you cancel at least 24 hours before the '
+                  'trial ends. Manage or cancel anytime in your device\'s '
+                  'subscription settings.',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Text(
+                    'One AI Assist = one post written for one platform. '
+                    'Sharing to 3 platforms uses 3, because each one gets '
+                    'its own version.\n\n'
+                    'AI Assist works between languages too -- write in '
+                    'Arabic and post in Spanish, or English and post in '
+                    'French. Almost any language, in either direction.',
+                    style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 12.5,
+                        height: 1.4),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'In-App Purchase',
+                  style: TextStyle(
+                      color: AppColors.gold,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                for (final AiAssistTier tier in AiAssistTier.values)
+                  _tierCard(tier),
+                const SizedBox(height: 12),
+                _legalRow(),
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton(
+                    onPressed: _purchaseInFlight ? null : _restore,
+                    child: const Text('Restore Purchases',
+                        style: TextStyle(color: AppColors.textMuted)),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  /// The offer this ProductDetails entry represents. On Android each offer
+  /// comes back as its own entry, and subscriptionIndex says which one.
+  SubscriptionOfferDetailsWrapper? _offerFor(ProductDetails? product) {
+    if (product is! GooglePlayProductDetails) return null;
+    final List<SubscriptionOfferDetailsWrapper>? offers =
+        product.productDetails.subscriptionOfferDetails;
+    final int? i = product.subscriptionIndex;
+    if (offers == null || i == null || i >= offers.length) return null;
+    return offers[i];
+  }
+
+  /// The ongoing price after any intro phase. The plugin builds
+  /// ProductDetails.price from pricingPhases.first, which for a plan with a
+  /// free trial is the trial itself -- so it reads "Free". Take the last
+  /// phase instead, which is the real recurring price.
+  String _recurringPrice(ProductDetails? product) {
+    if (product == null) return '\u2014';
+    final SubscriptionOfferDetailsWrapper? offer = _offerFor(product);
+    if (offer != null && offer.pricingPhases.isNotEmpty) {
+      return offer.pricingPhases.last.formattedPrice;
+    }
+    return product.price;
+  }
+
+  /// "2 weeks" when a zero-cost intro phase exists (Android reads it from
+  /// the store offer). Returns null on iPhone or when no trial phase is
+  /// found, and the caller falls back to the standard 2-week wording.
+  String? _trialPeriod(ProductDetails? product) {
+    if (product == null) return null;
+    final SubscriptionOfferDetailsWrapper? offer = _offerFor(product);
+    if (offer == null || offer.pricingPhases.length < 2) return null;
+    final PricingPhaseWrapper first = offer.pricingPhases.first;
+    if (first.priceAmountMicros != 0) return null;
+    return _humanPeriod(first.billingPeriod);
+  }
+
+  /// Turns an ISO 8601 period like P2W or P1M into readable text.
+  String _humanPeriod(String iso) {
+    final RegExp re =
+        RegExp(r'P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?');
+    final RegExpMatch? m = re.firstMatch(iso);
+    if (m == null) return iso;
+    const List<List<String>> units = <List<String>>[
+      <String>['year', 'years'],
+      <String>['month', 'months'],
+      <String>['week', 'weeks'],
+      <String>['day', 'days'],
+    ];
+    for (int g = 1; g <= 4; g++) {
+      final String? v = m.group(g);
+      if (v == null) continue;
+      final int n = int.tryParse(v) ?? 0;
+      if (n == 0) continue;
+      return '$n ${n == 1 ? units[g - 1][0] : units[g - 1][1]}';
+    }
+    return iso;
+  }
+
+  Widget _legalRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        TextButton(
+          onPressed: () => launchUrl(
+              Uri.parse('https://goldenapexapps.com/terms-of-service.html'),
+              mode: LaunchMode.externalApplication),
+          child: const Text('Terms of Use',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+        ),
+        const Text('\u00b7', style: TextStyle(color: AppColors.textMuted)),
+        TextButton(
+          onPressed: () => launchUrl(
+              Uri.parse('https://goldenapexapps.com/privacy-policy.html'),
+              mode: LaunchMode.externalApplication),
+          child: const Text('Privacy Policy',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+        ),
+      ],
+    );
+  }
+
+  Widget _tierCard(AiAssistTier tier) {
+    final ProductDetails? product = _productFor(tier);
+    final bool isCurrent = _activeTier == tier;
+    final bool hasPrice = product != null;
+    final String price = _recurringPrice(product);
+    final String? trialPeriod = _trialPeriod(product);
+
+    final String offerLine = !hasPrice
+        ? '2-week free trial'
+        : (trialPeriod != null
+            ? 'Free for $trialPeriod, then $price/month'
+            : '2-week free trial, then $price/month');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isCurrent ? AppColors.gold : AppColors.border,
+          width: isCurrent ? 1.6 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Text(tier.displayName,
+                  style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700)),
+              Text(hasPrice ? '$price/month' : price,
+                  style: const TextStyle(
+                      color: AppColors.gold,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Text(offerLine,
+                style: const TextStyle(
+                    color: AppColors.gold,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600)),
+          ),
+          Text('${tier.monthlyCallLimit} AI Assists per month',
+              style:
+                  const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: (_purchaseInFlight || isCurrent)
+                  ? null
+                  : () => _buy(tier),
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    isCurrent ? AppColors.surfaceAlt : AppColors.gold,
+                foregroundColor:
+                    isCurrent ? AppColors.textMuted : AppColors.black,
+              ),
+              child: Text(isCurrent ? 'Current Plan' : 'Subscribe'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

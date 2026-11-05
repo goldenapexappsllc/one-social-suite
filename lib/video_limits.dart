@@ -1,0 +1,161 @@
+// Video limits per app (free accounts). One place to edit.
+// Keys match PlatformDef.id in platform_registry.dart.
+// Numbers checked Nov 4 2026 against platform docs and current guides.
+// maxSeconds == null means no practical length limit.
+// verified == false means the number is a guess or sources disagree:
+// test a real upload before trusting it.
+
+class VideoLimit {
+  final String id;
+  final String label;
+  final int? maxSeconds;
+  final int? maxMB;
+  final String hint;
+  final bool verified;
+
+  const VideoLimit({
+    required this.id,
+    required this.label,
+    required this.maxSeconds,
+    required this.maxMB,
+    required this.hint,
+    this.verified = true,
+  });
+}
+
+const List<int> kRecordLengthOptions = [15, 30, 45, 60, 120, 180];
+const int kDefaultRecordSeconds = 60;
+
+const Map<String, VideoLimit> kVideoLimits = {
+  'whatsapp': VideoLimit(
+    id: 'whatsapp',
+    label: 'WhatsApp Status',
+    maxSeconds: 90,
+    maxMB: 16,
+    hint: 'WhatsApp Status up to 90s',
+    verified: false, // reports disagree: 30, 60, 90
+  ),
+  'instagram': VideoLimit(
+    id: 'instagram',
+    label: 'Instagram Stories',
+    maxSeconds: 60,
+    maxMB: null,
+    hint: 'Instagram Stories 60s, Reels 15 to 30s',
+  ),
+  'youtube': VideoLimit(
+    id: 'youtube',
+    label: 'YouTube Shorts',
+    maxSeconds: 180,
+    maxMB: null,
+    hint: 'YouTube Shorts up to 3 min',
+  ),
+  'facebook': VideoLimit(
+    id: 'facebook',
+    label: 'Facebook Reels',
+    maxSeconds: null,
+    maxMB: null,
+    hint: 'Facebook Reels any length',
+  ),
+  'telegram': VideoLimit(
+    id: 'telegram',
+    label: 'Telegram',
+    maxSeconds: null,
+    maxMB: 2000,
+    hint: 'Telegram up to 2 GB',
+  ),
+  'snapchat': VideoLimit(
+    id: 'snapchat',
+    label: 'Snapchat Spotlight',
+    maxSeconds: 60,
+    maxMB: 500,
+    hint: 'Snapchat Spotlight up to 60s',
+  ),
+  'x': VideoLimit(
+    id: 'x',
+    label: 'X',
+    maxSeconds: 140,
+    maxMB: 512,
+    hint: 'X up to 2 min 20s',
+  ),
+  'linkedin': VideoLimit(
+    id: 'linkedin',
+    label: 'LinkedIn',
+    maxSeconds: 600,
+    maxMB: 5000,
+    hint: 'LinkedIn up to 10 min',
+  ),
+  'tiktok': VideoLimit(
+    id: 'tiktok',
+    label: 'TikTok',
+    maxSeconds: 600,
+    maxMB: null,
+    hint: 'TikTok up to 10 min',
+  ),
+  'pinterest': VideoLimit(
+    id: 'pinterest',
+    label: 'Pinterest',
+    maxSeconds: 300,
+    maxMB: 2000,
+    hint: 'Pinterest 4s to 5 min',
+    verified: false, // Pinterest pages say both 5 and 15 minutes
+  ),
+  'threads': VideoLimit(
+    id: 'threads',
+    label: 'Threads',
+    maxSeconds: 300,
+    maxMB: 1000,
+    hint: 'Threads up to 5 min',
+  ),
+  'nextdoor': VideoLimit(
+    id: 'nextdoor',
+    label: 'Nextdoor',
+    maxSeconds: 120,
+    maxMB: 500,
+    hint: 'Nextdoor up to 2 min',
+    verified: false, // official docs give only the 500 MB size
+  ),
+};
+
+/// Lowest length limit among the ticked apps (by platform id), or null.
+int? safeMaxSeconds(Iterable<String> tickedIds) {
+  int? lowest;
+  for (final id in tickedIds) {
+    final s = kVideoLimits[id]?.maxSeconds;
+    if (s == null) continue;
+    if (lowest == null || s < lowest) lowest = s;
+  }
+  return lowest;
+}
+
+/// Labels of the apps that will trim a clip of [seconds].
+List<String> appsThatWillTrim(Iterable<String> tickedIds, int seconds) {
+  final out = <String>[];
+  for (final id in tickedIds) {
+    final l = kVideoLimits[id];
+    if (l?.maxSeconds != null && seconds > l!.maxSeconds!) out.add(l.label);
+  }
+  return out;
+}
+
+/// "WhatsApp Status 30s · Instagram Reels 15 to 30s · ..."
+String recommendedHint(Iterable<String> tickedIds) {
+  final parts = <String>[];
+  for (final id in tickedIds) {
+    final l = kVideoLimits[id];
+    if (l != null) parts.add(l.hint);
+  }
+  return parts.join(' · ');
+}
+
+/// Gold pill text under the length selector.
+String platformCheckMessage(Iterable<String> tickedIds, int seconds) {
+  final trim = appsThatWillTrim(tickedIds, seconds);
+  if (trim.isEmpty) {
+    final label = seconds >= 120 ? '${seconds ~/ 60} min' : '${seconds}s';
+    return '$label fits all your ticked apps';
+  }
+  final names = trim.length == 1
+      ? trim.first
+      : '${trim.sublist(0, trim.length - 1).join(', ')} and ${trim.last}';
+  return '$names will trim this';
+}

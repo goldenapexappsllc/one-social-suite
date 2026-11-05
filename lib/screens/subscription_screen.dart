@@ -19,6 +19,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   bool _loading = true;
   bool _purchaseInFlight = false;
   AiAssistTier? _activeTier;
+  int? _monthlyLeft;
+  int _bonusLeft = 0;
+  DateTime? _resetDate;
 
   @override
   void initState() {
@@ -29,10 +32,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Future<void> _load() async {
     await PurchaseService.instance.initialize();
     final AiAssistTier? tier = await PurchaseService.instance.currentTier();
+    await _loadUsage();
     if (!mounted) return;
     setState(() {
       _activeTier = tier;
       _loading = false;
+    });
+  }
+
+  Future<void> _loadUsage() async {
+    final int? monthly = await PurchaseService.instance.monthlyRemaining();
+    final int bonus = await PurchaseService.instance.bonusRemaining();
+    final DateTime? reset = await PurchaseService.instance.nextResetDate();
+    if (!mounted) return;
+    setState(() {
+      _monthlyLeft = monthly;
+      _bonusLeft = bonus;
+      _resetDate = reset;
     });
   }
 
@@ -55,6 +71,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     setState(() => _purchaseInFlight = true);
     await PurchaseService.instance.restorePurchases();
     final AiAssistTier? tier = await PurchaseService.instance.currentTier();
+    await _loadUsage();
     if (!mounted) return;
     setState(() {
       _activeTier = tier;
@@ -68,6 +85,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       if (p.id == tier.productId) return p;
     }
     return null;
+  }
+
+  String _fmtDate(DateTime d) {
+    const List<String> months = <String>[
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${months[d.month - 1]} ${d.day}';
   }
 
   @override
@@ -85,6 +110,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
               children: <Widget>[
+                _usageCard(),
                 const Text(
                   'Choose a plan',
                   style: TextStyle(
@@ -94,8 +120,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Every plan includes a 2-week free trial. Cancel anytime '
-                  'from your device\'s subscription settings.',
+                  'Every plan starts with a 2-week free trial. After the '
+                  'trial, your subscription renews monthly at the price '
+                  'shown unless you cancel at least 24 hours before the '
+                  'trial ends. Manage or cancel anytime in your device\'s '
+                  'subscription settings.',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
                 const SizedBox(height: 12),
@@ -120,6 +149,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                const Text(
+                  'In-App Purchase',
+                  style: TextStyle(
+                      color: AppColors.gold,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
                 for (final AiAssistTier tier in AiAssistTier.values)
                   _tierCard(tier),
                 const SizedBox(height: 12),
@@ -134,6 +171,68 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  /// "Your AI Assists" -- shown only to people who have a plan. Lays out
+  /// exactly what's left so nobody has to guess.
+  Widget _usageCard() {
+    final AiAssistTier? tier = _activeTier;
+    if (tier == null || _monthlyLeft == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text('Your AI Assists',
+              style: TextStyle(
+                  color: AppColors.gold,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          _usageRow('Monthly',
+              '$_monthlyLeft of ${tier.monthlyCallLimit} left'),
+          if (_bonusLeft > 0) _usageRow('Bonus', '$_bonusLeft left'),
+          if (_resetDate != null)
+            _usageRow('Monthly count resets', _fmtDate(_resetDate!)),
+          if (_bonusLeft > 0) ...<Widget>[
+            const SizedBox(height: 10),
+            const Text(
+              'AI Assist didn\'t show a count before, so we added 200 '
+              'bonus AI Assists as a thank-you. They\'re used after your '
+              'monthly ones.',
+              style: TextStyle(
+                  color: AppColors.textMuted, fontSize: 12.5, height: 1.4),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _usageRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: <Widget>[
+          Text(label,
+              style:
+                  const TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+          Text(value,
+              style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 
@@ -161,14 +260,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return product.price;
   }
 
-  /// "Free for 2 weeks, then" when a zero-cost intro phase exists.
-  String? _trialLabel(ProductDetails? product) {
+  /// "2 weeks" when a zero-cost intro phase exists (Android reads it from
+  /// the store offer). Returns null on iPhone or when no trial phase is
+  /// found, and the caller falls back to the standard 2-week wording.
+  String? _trialPeriod(ProductDetails? product) {
     if (product == null) return null;
     final SubscriptionOfferDetailsWrapper? offer = _offerFor(product);
     if (offer == null || offer.pricingPhases.length < 2) return null;
     final PricingPhaseWrapper first = offer.pricingPhases.first;
     if (first.priceAmountMicros != 0) return null;
-    return 'Free for ${_humanPeriod(first.billingPeriod)}, then';
+    return _humanPeriod(first.billingPeriod);
   }
 
   /// Turns an ISO 8601 period like P2W or P1M into readable text.
@@ -219,8 +320,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget _tierCard(AiAssistTier tier) {
     final ProductDetails? product = _productFor(tier);
     final bool isCurrent = _activeTier == tier;
-    final String priceLabel = _recurringPrice(product);
-    final String? trialLabel = _trialLabel(product);
+    final bool hasPrice = product != null;
+    final String price = _recurringPrice(product);
+    final String? trialPeriod = _trialPeriod(product);
+
+    final String offerLine = !hasPrice
+        ? '2-week free trial'
+        : (trialPeriod != null
+            ? 'Free for $trialPeriod, then $price/month'
+            : '2-week free trial, then $price/month');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -244,7 +352,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       color: AppColors.textPrimary,
                       fontSize: 17,
                       fontWeight: FontWeight.w700)),
-              Text(priceLabel,
+              Text(hasPrice ? '$price/month' : price,
                   style: const TextStyle(
                       color: AppColors.gold,
                       fontSize: 17,
@@ -252,15 +360,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ],
           ),
           const SizedBox(height: 4),
-          if (trialLabel != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Text(trialLabel,
-                  style: const TextStyle(
-                      color: AppColors.gold,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600)),
-            ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Text(offerLine,
+                style: const TextStyle(
+                    color: AppColors.gold,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600)),
+          ),
           Text('${tier.monthlyCallLimit} AI Assists per month',
               style:
                   const TextStyle(color: AppColors.textMuted, fontSize: 13)),

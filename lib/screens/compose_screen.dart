@@ -6,13 +6,16 @@ import '../models/platform_registry.dart';
 import '../models/platform_suggestion.dart';
 import '../models/post_draft.dart';
 import '../models/tone.dart';
+import '../models/video_item.dart';
 import '../services/platform_suggester.dart';
 import '../theme/app_theme.dart';
 import '../models/draft.dart';
 import '../services/storage_service.dart';
+import '../video_limits.dart';
 import 'ai_consent.dart';
 import 'ai_consent_modal.dart';
 import 'preview_screen.dart';
+import 'record_screen.dart';
 import 'subscription_screen.dart';
 import '../services/purchase_service.dart';
 
@@ -31,6 +34,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
   final TextEditingController _text = TextEditingController();
   final TextEditingController _customLanguage = TextEditingController();
+  final TextEditingController _videoName = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   final Set<String> _selected = <String>{};
   final FocusNode _textFocus = FocusNode();
@@ -47,10 +51,22 @@ class _ComposeScreenState extends State<ComposeScreen> {
     'Chinese',
     'Japanese',
     'Hindi',
+    'Bengali',
+    'Tamil',
+    'Telugu',
+    'Marathi',
   ];
   bool _useAi = false;
   String? _mediaPath;
   bool _isVideo = false;
+  int? _videoSeconds;
+
+  // AI Assist usage, shown under the toggle for people with a plan.
+  AiAssistTier? _tier;
+  int? _callsLeft;
+  int _monthlyLeft = 0;
+  int _bonusLeft = 0;
+  DateTime? _resetDate;
 
   @override
   void initState() {
@@ -63,7 +79,10 @@ class _ComposeScreenState extends State<ComposeScreen> {
       _tone = d.tone;
       _mediaPath = d.mediaPath;
       _isVideo = d.isVideo;
+      _videoName.text = d.videoName ?? '';
+      _videoSeconds = d.videoSeconds;
     }
+    _loadUsage();
   }
 
   @override
@@ -71,15 +90,156 @@ class _ComposeScreenState extends State<ComposeScreen> {
     _text.dispose();
     _textFocus.dispose();
     _customLanguage.dispose();
+    _videoName.dispose();
     super.dispose();
   }
 
   void _dismissKeyboard() => FocusScope.of(context).unfocus();
 
+  Future<void> _loadUsage() async {
+    final AiAssistTier? tier = await PurchaseService.instance.currentTier();
+    if (tier == null) {
+      if (mounted) {
+        setState(() {
+          _tier = null;
+          _callsLeft = null;
+        });
+      }
+      return;
+    }
+    final int? monthly = await PurchaseService.instance.monthlyRemaining();
+    final int bonus = await PurchaseService.instance.bonusRemaining();
+    final DateTime? reset = await PurchaseService.instance.nextResetDate();
+    if (!mounted) return;
+    setState(() {
+      _tier = tier;
+      _monthlyLeft = monthly ?? 0;
+      _bonusLeft = bonus;
+      _callsLeft = (monthly ?? 0) + bonus;
+      _resetDate = reset;
+    });
+  }
+
+  String _countLabel() {
+    final int n = _callsLeft ?? 0;
+    final String noun = n == 1 ? 'Assist' : 'Assists';
+    if (_bonusLeft > 0) {
+      return '$n AI $noun left';
+    }
+    return '$n AI $noun left this month';
+  }
+
+  String _fmtDate(DateTime d) {
+    const List<String> months = <String>[
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${months[d.month - 1]} ${d.day}';
+  }
+
+  String _fmtLength(int s) {
+    final int m = s ~/ 60;
+    final int r = s % 60;
+    return '$m:${r.toString().padLeft(2, '0')}';
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: <Widget>[
+          Text(label,
+              style:
+                  const TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+          const SizedBox(width: 16),
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openPlans() async {
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const SubscriptionScreen(),
+      ),
+    );
+    if (mounted) _loadUsage();
+  }
+
+  void _showUsageDetails() {
+    final AiAssistTier? tier = _tier;
+    if (tier == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Your AI Assists',
+            style: TextStyle(color: AppColors.gold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _detailRow(
+                'Monthly', '$_monthlyLeft of ${tier.monthlyCallLimit} left'),
+            if (_bonusLeft > 0) _detailRow('Bonus', '$_bonusLeft left'),
+            if (_resetDate != null)
+              _detailRow('Monthly count resets', _fmtDate(_resetDate!)),
+            const SizedBox(height: 10),
+            const Text(
+              'One AI Assist = one post written for one platform.',
+              style: TextStyle(
+                  color: AppColors.textMuted, fontSize: 12.5, height: 1.4),
+            ),
+            if (_bonusLeft > 0) ...<Widget>[
+              const SizedBox(height: 10),
+              const Text(
+                'AI Assist didn\'t show a count before, so we added 200 '
+                'bonus AI Assists as a thank-you. They\'re used after your '
+                'monthly ones.',
+                style: TextStyle(
+                    color: AppColors.textMuted, fontSize: 12.5, height: 1.4),
+              ),
+            ],
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _openPlans();
+            },
+            child: const Text('View plans',
+                style: TextStyle(color: AppColors.textMuted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child:
+                const Text('Close', style: TextStyle(color: AppColors.gold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   int get _wordCount =>
       _text.text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
 
-  bool get _allSelected => _selected.length == PlatformRegistry.count;
+  /// The All chip covers the core platforms only. Extra platforms are
+  /// ticked one at a time and are not affected by All.
+  bool get _allSelected => PlatformRegistry.core
+      .every((PlatformDef p) => _selected.contains(p.id));
+
+  String? get _cleanVideoName {
+    final String n = _videoName.text.trim();
+    return (_isVideo && n.isNotEmpty) ? n : null;
+  }
 
   PlatformSuggestion get _suggestion => _suggester.suggest(PostDraft(
         text: _text.text,
@@ -94,12 +254,12 @@ class _ComposeScreenState extends State<ComposeScreen> {
       });
 
   void _toggleAll() => setState(() {
+        final Iterable<String> coreIds =
+            PlatformRegistry.core.map((PlatformDef p) => p.id);
         if (_allSelected) {
-          _selected.clear();
+          _selected.removeAll(coreIds);
         } else {
-          _selected
-            ..clear()
-            ..addAll(PlatformRegistry.all.map((p) => p.id));
+          _selected.addAll(coreIds);
         }
       });
 
@@ -136,12 +296,35 @@ class _ComposeScreenState extends State<ComposeScreen> {
     setState(() {
       _mediaPath = file.path;
       _isVideo = choice == 'video';
+      _videoSeconds = null;
+      _videoName.text = _isVideo ? defaultVideoName(DateTime.now()) : '';
     });
   }
 
+  Future<void> _recordVideo() async {
+    _dismissKeyboard();
+    final RecordedVideo? v = await Navigator.of(context).push<RecordedVideo>(
+      MaterialPageRoute<RecordedVideo>(
+        fullscreenDialog: true,
+        builder: (_) => RecordScreen(platformIds: Set<String>.from(_selected)),
+      ),
+    );
+    if (v == null || !mounted) return;
+    setState(() {
+      _mediaPath = v.path;
+      _isVideo = true;
+      _videoSeconds = v.seconds;
+      _videoName.text = defaultVideoName(v.createdAt);
+    });
+  }
+
+  // Removes the video from THIS post only. The file stays saved in the app
+  // so it can be reused in other drafts.
   void _removeMedia() => setState(() {
         _mediaPath = null;
         _isVideo = false;
+        _videoSeconds = null;
+        _videoName.text = '';
       });
 
   void _toast(String msg) => ScaffoldMessenger.of(context)
@@ -161,6 +344,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
       tone: _tone,
       mediaPath: _mediaPath,
       isVideo: _isVideo,
+      videoName: _cleanVideoName,
+      videoSeconds: _isVideo ? _videoSeconds : null,
       createdAt: now,
       editedAt: now,
     );
@@ -169,9 +354,9 @@ class _ComposeScreenState extends State<ComposeScreen> {
     _toast('Draft saved');
   }
 
-  void _openPreview() {
+  Future<void> _openPreview() async {
     _dismissKeyboard();
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => PreviewScreen(
           draft: PostDraft(
@@ -180,12 +365,15 @@ class _ComposeScreenState extends State<ComposeScreen> {
             tone: _tone,
             mediaPath: _mediaPath,
             isVideo: _isVideo,
+            videoName: _cleanVideoName,
+            videoSeconds: _isVideo ? _videoSeconds : null,
             useAi: _useAi,
             targetLanguage: _targetLanguage,
           ),
         ),
       ),
     );
+    if (mounted) _loadUsage();
   }
 
   @override
@@ -195,6 +383,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
         PlatformRegistry.all.where((p) => _selected.contains(p.id)).toList();
     final bool showSuggestion = _wordCount >= 10;
     final PlatformSuggestion sug = _suggestion;
+    final String videoHint =
+        (_isVideo && _selected.isNotEmpty) ? recommendedHint(_selected) : '';
 
     return Container(
       color: AppColors.black,
@@ -294,10 +484,24 @@ class _ComposeScreenState extends State<ComposeScreen> {
                       _label('Add media'),
                       const SizedBox(height: 8),
                       if (_mediaPath == null)
-                        _outlineButton(
-                          icon: Icons.add_photo_alternate_outlined,
-                          text: 'Add photo / video',
-                          onTap: _pickMedia,
+                        Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: _outlineButton(
+                                icon: Icons.videocam_outlined,
+                                text: 'Record video',
+                                onTap: _recordVideo,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _outlineButton(
+                                icon: Icons.add_photo_alternate_outlined,
+                                text: 'Photo / video',
+                                onTap: _pickMedia,
+                              ),
+                            ),
+                          ],
                         )
                       else
                         _mediaPreview(),
@@ -377,97 +581,140 @@ class _ComposeScreenState extends State<ComposeScreen> {
                       const SizedBox(height: 22),
 
                       // --- AI Assist (BETA) ---
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.gold.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(14),
-                  border:
-                      Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        const Icon(Icons.auto_awesome,
-                            color: AppColors.gold, size: 18),
-                        const SizedBox(width: 8),
-                        const Text('AI Assist',
-                            style: TextStyle(
-                                color: AppColors.gold,
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.gold,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text('BETA',
-                              style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold)),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: AppColors.gold.withValues(alpha: 0.4)),
                         ),
-                        const Spacer(),
-                        Switch(
-                          value: _useAi,
-                          onChanged: (bool v) async {
-                            if (v) {
-                              final bool hasConsent = await AiConsentService
-                                  .instance
-                                  .hasCurrentConsent();
-                              if (!hasConsent) {
-                                if (!context.mounted) return;
-                                final bool accepted =
-                                    await showAiConsentModal(context);
-                                if (!accepted) return;
-                              }
-                              final bool hasSubscription =
-                                  await PurchaseService.instance
-                                      .hasActiveSubscription();
-                              if (!hasSubscription) {
-                                if (!context.mounted) return;
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) =>
-                                        const SubscriptionScreen(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                const Icon(Icons.auto_awesome,
+                                    color: AppColors.gold, size: 18),
+                                const SizedBox(width: 8),
+                                const Text('AI Assist',
+                                    style: TextStyle(
+                                        color: AppColors.gold,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold)),
+                                const Spacer(),
+                                Switch(
+                                  value: _useAi,
+                                  onChanged: (bool v) async {
+                                    if (v) {
+                                      final bool hasConsent =
+                                          await AiConsentService.instance
+                                              .hasCurrentConsent();
+                                      if (!hasConsent) {
+                                        if (!context.mounted) return;
+                                        final bool accepted =
+                                            await showAiConsentModal(context);
+                                        if (!accepted) return;
+                                      }
+                                      final bool hasSubscription =
+                                          await PurchaseService.instance
+                                              .hasActiveSubscription();
+                                      if (!hasSubscription) {
+                                        if (!context.mounted) return;
+                                        await Navigator.of(context).push(
+                                          MaterialPageRoute<void>(
+                                            builder: (_) =>
+                                                const SubscriptionScreen(),
+                                          ),
+                                        );
+                                        final bool nowSubscribed =
+                                            await PurchaseService.instance
+                                                .hasActiveSubscription();
+                                        if (!nowSubscribed) return;
+                                      }
+                                    }
+                                    if (!mounted) return;
+                                    setState(() => _useAi = v);
+                                    if (v) _loadUsage();
+                                  },
+                                  activeThumbColor: AppColors.gold,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _useAi
+                                  ? (_selected.isEmpty
+                                      ? 'Your text is sent to OpenAI to enhance each '
+                                          'caption. Each platform you select uses 1 '
+                                          'AI Assist.'
+                                      : 'This post will use ${_selected.length} AI '
+                                          'Assist${_selected.length == 1 ? '' : 's'} '
+                                          '-- 1 per platform selected.')
+                                  : 'Off. Captions are shaped on your device only.',
+                              style: const TextStyle(
+                                  color: AppColors.textMuted, fontSize: 12),
+                            ),
+                            if (_useAi && _callsLeft != null) ...<Widget>[
+                              const SizedBox(height: 8),
+                              Row(
+                                children: <Widget>[
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: <Widget>[
+                                        Text(
+                                          _countLabel(),
+                                          style: const TextStyle(
+                                              color: AppColors.gold,
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w600),
+                                        ),
+                                        if (_bonusLeft > 0)
+                                          Text(
+                                            '(includes $_bonusLeft bonus)',
+                                            style: const TextStyle(
+                                                color: AppColors.textMuted,
+                                                fontSize: 12.5),
+                                          ),
+                                      ],
+                                    ),
                                   ),
-                                );
-                                final bool nowSubscribed =
-                                    await PurchaseService.instance
-                                        .hasActiveSubscription();
-                                if (!nowSubscribed) return;
-                              }
-                            }
-                            setState(() => _useAi = v);
-                          },
-                          activeThumbColor: AppColors.gold,
+                                  TextButton(
+                                    onPressed: _showUsageDetails,
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: const Size(0, 0),
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: const Text('Plan Details',
+                                        style: TextStyle(
+                                            color: AppColors.textMuted,
+                                            fontSize: 12.5,
+                                            decoration:
+                                                TextDecoration.underline)),
+                                  ),
+                                ],
+                              ),
+                              if (_selected.length > (_callsLeft ?? 0))
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    'Not enough AI Assists left for every '
+                                    'platform -- the rest will keep the '
+                                    'on-device captions.',
+                                    style: TextStyle(
+                                        color: _warn, fontSize: 12),
+                                  ),
+                                ),
+                            ],
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _useAi
-                          ? (_selected.isEmpty
-                              ? 'Your text is sent to OpenAI to enhance each '
-                                  'caption. Each platform you select uses 1 '
-                                  'AI Assist.'
-                              : 'This post will use ${_selected.length} AI '
-                                  'Assist${_selected.length == 1 ? '' : 's'} '
-                                  '-- 1 per platform selected.')
-                          : 'Off. Captions are shaped on your device only.',
-                      style: const TextStyle(
-                          color: AppColors.textMuted, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 22),
-              _label('Share to'),
+                      ),
+                      const SizedBox(height: 22),
+                      _label('Share to'),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -485,6 +732,26 @@ class _ComposeScreenState extends State<ComposeScreen> {
                                 onTap: () => _toggle(p.id),
                               )),
                         ],
+                      ),
+                      if (videoHint.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: 10),
+                        Text(
+                          'Recommended video length: $videoHint',
+                          style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                              height: 1.4),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Don\'t see your app? Pick any platform, then tap '
+                        'Share anywhere on the next screen to send it to any '
+                        'app on your phone.',
+                        style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                            height: 1.4),
                       ),
                       const SizedBox(height: 22),
 
@@ -623,9 +890,54 @@ class _ComposeScreenState extends State<ComposeScreen> {
             children: <Widget>[
               Icon(icon, color: AppColors.gold, size: 22),
               const SizedBox(width: 10),
-              Text(text, style: const TextStyle(color: AppColors.gold)),
+              Flexible(
+                child: Text(text,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.gold)),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _videoCheckPill() {
+    final int? secs = _videoSeconds;
+    if (!_isVideo || secs == null || _selected.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final bool ok = appsThatWillTrim(_selected, secs).isEmpty;
+    final Color color = ok ? AppColors.gold : _warn;
+    final String msg = ok
+        ? '${_fmtLength(secs)} fits all your ticked apps'
+        : platformCheckMessage(_selected, secs);
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: AppColors.black,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              ok ? Icons.check_circle_outline : Icons.warning_amber_rounded,
+              color: color,
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                msg,
+                style: TextStyle(
+                    color: color, fontSize: 12.5, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -639,40 +951,73 @@ class _ComposeScreenState extends State<ComposeScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.gold),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: _isVideo
-                ? Container(
-                    width: 56,
-                    height: 56,
-                    color: AppColors.black,
-                    child: const Icon(Icons.videocam,
-                        color: AppColors.gold, size: 28),
-                  )
-                : Image.file(
-                    File(_mediaPath!),
-                    width: 56,
-                    height: 56,
-                    fit: BoxFit.cover,
-                    errorBuilder: (BuildContext context, Object error,
-                            StackTrace? stack) =>
-                        const Icon(Icons.broken_image,
-                            color: AppColors.textMuted),
-                  ),
+          Row(
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: _isVideo
+                    ? Container(
+                        width: 56,
+                        height: 56,
+                        color: AppColors.black,
+                        child: const Icon(Icons.videocam,
+                            color: AppColors.gold, size: 28),
+                      )
+                    : Image.file(
+                        File(_mediaPath!),
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        errorBuilder: (BuildContext context, Object error,
+                                StackTrace? stack) =>
+                            const Icon(Icons.broken_image,
+                                color: AppColors.textMuted),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _isVideo
+                      ? (_videoSeconds != null
+                          ? 'Video attached  -  ${_fmtLength(_videoSeconds!)}'
+                          : 'Video attached')
+                      : 'Photo attached',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Remove from this post',
+                icon: const Icon(Icons.close, color: AppColors.textMuted),
+                onPressed: _removeMedia,
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _isVideo ? 'Video attached' : 'Photo attached',
-              style: const TextStyle(color: Colors.white),
+          if (_isVideo) ...<Widget>[
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.black,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+              child: TextField(
+                controller: _videoName,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                cursorColor: AppColors.gold,
+                decoration: const InputDecoration(
+                  labelText: 'Video name',
+                  labelStyle:
+                      TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  border: InputBorder.none,
+                ),
+              ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, color: AppColors.textMuted),
-            onPressed: _removeMedia,
-          ),
+            _videoCheckPill(),
+          ],
         ],
       ),
     );

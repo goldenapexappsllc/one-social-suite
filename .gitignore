@@ -52,3 +52,5 @@ android/keystore/
 *.bak
 *.bak2
 *.bak3
+run_debug.sh
+run_debug_real.sh

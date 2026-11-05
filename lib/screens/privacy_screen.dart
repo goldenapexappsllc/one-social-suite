@@ -73,6 +73,8 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
               _statusRow(icon: Icons.analytics_outlined,
                   title: 'Analytics',
                   status: 'Off'),
+              const SizedBox(height: 12),
+              _aiDataCard(),
               const SizedBox(height: 24),
 
               _sectionLabel('Security'),
@@ -235,6 +237,44 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
               'your device unless you choose otherwise.',
               style: TextStyle(
                   color: Colors.white, fontSize: 14, height: 1.4),
+            ),
+          ],
+        ),
+      );
+
+  Widget _aiDataCard() => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Row(
+              children: <Widget>[
+                Icon(Icons.auto_awesome,
+                    color: AppColors.gold, size: 16),
+                SizedBox(width: 8),
+                Text('AI Assist and your data',
+                    style: TextStyle(
+                        color: AppColors.gold,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "AI Assist is the only feature that sends anything off "
+              "your device. Your text passes through our proxy to "
+              "OpenAI to be rewritten -- our proxy doesn't store it, "
+              "and OpenAI doesn't use it to train their models. It's "
+              "held briefly for abuse prevention, then deleted.",
+              style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                  height: 1.5),
             ),
           ],
         ),

@@ -1,0 +1,81 @@
+/// One saved video in the app's own videos folder.
+/// The file name is the id; only the name is stored, never a full path,
+/// so it keeps working if the app's folder path changes.
+class VideoItem {
+  const VideoItem({
+    required this.fileName,
+    required this.name,
+    this.seconds,
+    required this.bytes,
+    required this.createdAt,
+    this.trashedAt,
+  });
+
+  final String fileName;
+  final String name;
+  final int? seconds;
+  final int bytes;
+  final DateTime createdAt;
+  final DateTime? trashedAt;
+
+  bool get isTrashed => trashedAt != null;
+
+  VideoItem copyWith({
+    String? name,
+    int? seconds,
+    int? bytes,
+    DateTime? trashedAt,
+    bool clearTrash = false,
+  }) =>
+      VideoItem(
+        fileName: fileName,
+        name: name ?? this.name,
+        seconds: seconds ?? this.seconds,
+        bytes: bytes ?? this.bytes,
+        createdAt: createdAt,
+        trashedAt: clearTrash ? null : (trashedAt ?? this.trashedAt),
+      );
+
+  Map<String, dynamic> toMap() => <String, dynamic>{
+        'fileName': fileName,
+        'name': name,
+        'seconds': seconds,
+        'bytes': bytes,
+        'createdAt': createdAt.toIso8601String(),
+        'trashedAt': trashedAt?.toIso8601String(),
+      };
+
+  static VideoItem fromMap(Map<dynamic, dynamic> m) => VideoItem(
+        fileName: m['fileName'] as String,
+        name: m['name'] as String? ?? 'Video',
+        seconds: m['seconds'] as int?,
+        bytes: m['bytes'] as int? ?? 0,
+        createdAt: DateTime.tryParse(m['createdAt'] as String? ?? '') ??
+            DateTime.now(),
+        trashedAt: m['trashedAt'] == null
+            ? null
+            : DateTime.tryParse(m['trashedAt'] as String),
+      );
+}
+
+String formatBytes(int b) {
+  if (b < 1024 * 1024) return '${(b / 1024).round()} KB';
+  if (b < 1024 * 1024 * 1024) {
+    return '${(b / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+  return '${(b / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+}
+
+String formatLength(int s) {
+  final int m = s ~/ 60;
+  final int r = s % 60;
+  return '$m:${r.toString().padLeft(2, '0')}';
+}
+
+String defaultVideoName(DateTime d) {
+  const List<String> months = <String>[
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+  return 'Video ${months[d.month - 1]} ${d.day}';
+}

@@ -1,16 +1,20 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:gal/gal.dart';
 import '../models/history_entry.dart';
 import '../models/platform_def.dart';
 import '../models/platform_registry.dart';
 import '../models/post_draft.dart';
+import '../models/video_item.dart';
 import '../services/ai_caption_formatter.dart';
 import '../services/caption_formatter.dart';
 import '../services/share_service.dart';
 import '../services/storage_service.dart';
 import '../services/purchase_service.dart';
 import '../theme/app_theme.dart';
+import '../video_limits.dart';
 
 class PreviewScreen extends StatefulWidget {
   const PreviewScreen({super.key, required this.draft});
@@ -31,21 +35,54 @@ class _PreviewScreenState extends State<PreviewScreen> {
       <String, TextEditingController>{};
   final Map<String, FocusNode> _focusNodes = <String, FocusNode>{};
 
+  // Platforms are picked on Compose. AI captions are written once, when
+  // this screen opens, so the list is fixed here.
   late Set<String> _selectedIds;
   int _index = 0;
   bool _busy = false;
   bool _aiThinking = false;
   bool _showCopiedOverlay = false;
+  bool _copiedWithVideo = false;
   String _copiedPlatformName = '';
+  int? _callsLeft;
+  int _bonusLeft = 0;
+  bool _savingCopy = false;
+  bool _savedCopy = false;
+
+  bool get _hasVideo =>
+      widget.draft.isVideo && widget.draft.mediaPath != null;
 
   @override
   void initState() {
     super.initState();
     _selectedIds = widget.draft.selectedPlatformIds.toSet();
     _syncControllers();
+    if (widget.draft.useAi) {
+      _loadCallsLeft();
+    }
     if (widget.draft.useAi && _ai.isConfigured) {
       _enhanceWithAi();
     }
+  }
+
+  Future<void> _loadCallsLeft() async {
+    final int? left = await PurchaseService.instance.callsRemaining();
+    final int bonus = await PurchaseService.instance.bonusRemaining();
+    if (mounted) {
+      setState(() {
+        _callsLeft = left;
+        _bonusLeft = bonus;
+      });
+    }
+  }
+
+  String _countLabel() {
+    final int n = _callsLeft ?? 0;
+    final String noun = n == 1 ? 'Assist' : 'Assists';
+    if (_bonusLeft > 0) {
+      return '$n AI $noun left (includes $_bonusLeft bonus)';
+    }
+    return '$n AI $noun left this month';
   }
 
   List<PlatformDef> get _platforms => PlatformRegistry.all
@@ -84,20 +121,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
   }
 
-  void _toggle(String id) {
-    setState(() {
-      if (_selectedIds.contains(id)) {
-        _selectedIds.remove(id);
-      } else {
-        _selectedIds.add(id);
-      }
-      _syncControllers();
-      if (_index >= _platforms.length) {
-        _index = _platforms.isEmpty ? 0 : _platforms.length - 1;
-      }
-    });
-  }
-
   void _resetCurrent() {
     final PlatformDef p = _platforms[_index];
     setState(() => _controllers[p.id]!.text = _formattedFor(p));
@@ -120,17 +143,19 @@ class _PreviewScreenState extends State<PreviewScreen> {
       if (ai.isNotEmpty && _controllers[p.id] != null) {
         setState(() => _controllers[p.id]!.text = ai);
         await PurchaseService.instance.recordCallUsed();
+        await _loadCallsLeft();
       }
     }
     if (mounted) setState(() => _aiThinking = false);
   }
 
-  void _showCopiedBanner(String platformName) {
+  void _showCopiedBanner(String platformName, {bool withVideo = false}) {
     setState(() {
       _copiedPlatformName = platformName;
+      _copiedWithVideo = withVideo;
       _showCopiedOverlay = true;
     });
-    Timer(const Duration(seconds: 2), () {
+    Timer(Duration(seconds: withVideo ? 3 : 2), () {
       if (mounted) setState(() => _showCopiedOverlay = false);
     });
   }
@@ -167,8 +192,17 @@ class _PreviewScreenState extends State<PreviewScreen> {
     }
   }
 
+  /// Open: for a post with a video, saves the video to Photos first (once),
+  /// then copies this platform's caption and opens the app.
   Future<void> _shareOne(PlatformDef p) async {
     _dismissKeyboard();
+    final bool hasVideo = _hasVideo;
+    if (hasVideo) {
+      setState(() => _busy = true);
+      final bool ok = await _saveVideoToPhotos();
+      if (mounted) setState(() => _busy = false);
+      if (!ok || !mounted) return;
+    }
     final ShareOutcome o = await _share.shareToPlatform(
       platform: p,
       caption: _controllers[p.id]!.text,
@@ -177,7 +211,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
     await _logShare(p, o);
     if (!mounted) return;
     if (o == ShareOutcome.copiedAndOpened || o == ShareOutcome.appNotFound) {
-      _showCopiedBanner(p.name);
+      _showCopiedBanner(p.name, withVideo: hasVideo);
     } else {
       _snack(_outcomeMessage(p, o));
     }
@@ -186,6 +220,14 @@ class _PreviewScreenState extends State<PreviewScreen> {
   Future<void> _shareAll() async {
     _dismissKeyboard();
     setState(() => _busy = true);
+    final bool hasVideo = _hasVideo;
+    if (hasVideo) {
+      final bool ok = await _saveVideoToPhotos();
+      if (!ok || !mounted) {
+        if (mounted) setState(() => _busy = false);
+        return;
+      }
+    }
     for (final PlatformDef p in _platforms) {
       final ShareOutcome o = await _share.shareToPlatform(
         platform: p,
@@ -195,8 +237,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
       await _logShare(p, o);
       if (!mounted) return;
       if (o == ShareOutcome.copiedAndOpened || o == ShareOutcome.appNotFound) {
-        _showCopiedBanner(p.name);
-        await Future<void>.delayed(const Duration(milliseconds: 2200));
+        _showCopiedBanner(p.name, withVideo: hasVideo);
+        await Future<void>.delayed(
+            Duration(milliseconds: hasVideo ? 3200 : 2200));
       } else {
         _snack(_outcomeMessage(p, o));
       }
@@ -212,6 +255,69 @@ class _PreviewScreenState extends State<PreviewScreen> {
         : _controllers[pl[_index].id]?.text ?? widget.draft.text;
     await _share.shareAnywhere(
         caption: caption, mediaPath: widget.draft.mediaPath);
+  }
+
+  /// Saves the video into Photos (iPhone) or Gallery (Android), once.
+  /// Returns true if the video is there (saved earlier on this screen, or
+  /// saved now). On failure it shows the reason and returns false.
+  /// The original stays in the app, so it can be used for other posts.
+  Future<bool> _saveVideoToPhotos({bool announce = false}) async {
+    final String? path = widget.draft.mediaPath;
+    if (path == null || !widget.draft.isVideo) return true;
+    if (_savedCopy) return true;
+    if (_savingCopy) return false;
+    setState(() => _savingCopy = true);
+
+    bool ok = false;
+    String? problem;
+    try {
+      if (!File(path).existsSync()) {
+        problem = 'That video is no longer on this phone.';
+      } else {
+        final bool has = await Gal.hasAccess();
+        if (!has) {
+          final bool granted = await Gal.requestAccess();
+          if (!granted) {
+            problem = 'Photos access is off. Turn on adding photos and '
+                'videos for this app in your phone Settings, then try again.';
+          }
+        }
+        if (problem == null) {
+          await Gal.putVideo(path);
+          ok = true;
+        }
+      }
+    } on GalException catch (e) {
+      if (e.type == GalExceptionType.accessDenied) {
+        problem = 'Photos access is off. Turn on adding photos and '
+            'videos for this app in your phone Settings, then try again.';
+      } else if (e.type == GalExceptionType.notEnoughSpace) {
+        problem = 'Not enough space on this phone to save the video.';
+      } else {
+        problem = 'Could not save the video. Please try again.';
+      }
+    } catch (_) {
+      problem = 'Could not save the video. Please try again.';
+    }
+
+    if (!mounted) return ok;
+    setState(() {
+      _savingCopy = false;
+      if (ok) _savedCopy = true;
+    });
+    if (ok && announce) {
+      _snack(Platform.isIOS
+          ? 'Saved a copy to Photos'
+          : 'Saved a copy to your Gallery');
+    } else if (!ok && problem != null) {
+      _snack(problem);
+    }
+    return ok;
+  }
+
+  Future<void> _saveCopy() async {
+    _dismissKeyboard();
+    await _saveVideoToPhotos(announce: true);
   }
 
   void _snack(String msg) => ScaffoldMessenger.of(context)
@@ -232,13 +338,12 @@ class _PreviewScreenState extends State<PreviewScreen> {
               : 'Preview  ${_index + 1} of ${platforms.length}'),
           backgroundColor: AppColors.black,
           foregroundColor: AppColors.gold,
-
         ),
         body: Stack(
           children: <Widget>[
             Column(
               children: <Widget>[
-                _platformChips(),
+                if (_hasVideo) _videoStrip(),
                 // AI thinking banner
                 if (_aiThinking)
                   Container(
@@ -259,6 +364,16 @@ class _PreviewScreenState extends State<PreviewScreen> {
                             style: TextStyle(
                                 color: AppColors.gold, fontSize: 13)),
                       ],
+                    ),
+                  ),
+                // AI Assist usage counter
+                if (widget.draft.useAi && _callsLeft != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      _countLabel(),
+                      style: const TextStyle(
+                          color: AppColors.textMuted, fontSize: 12.5),
                     ),
                   ),
                 if (platforms.isEmpty)
@@ -308,9 +423,12 @@ class _PreviewScreenState extends State<PreviewScreen> {
                           const Icon(Icons.check_circle,
                               color: AppColors.gold, size: 48),
                           const SizedBox(height: 12),
-                          const Text(
-                            'Caption Copied!',
-                            style: TextStyle(
+                          Text(
+                            _copiedWithVideo
+                                ? 'Video Saved + Caption Copied!'
+                                : 'Caption Copied!',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
                               color: AppColors.gold,
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -318,7 +436,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Open $_copiedPlatformName and paste\nyour message to post.',
+                            _copiedWithVideo
+                                ? 'In $_copiedPlatformName, pick the video\nfrom Photos and paste your caption.'
+                                : 'Open $_copiedPlatformName and paste\nyour message to post.',
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               color: Colors.white,
@@ -338,53 +458,96 @@ class _PreviewScreenState extends State<PreviewScreen> {
     );
   }
 
-  Widget _platformChips() {
+  /// Video strip: name, length, a fit check for the platforms picked on
+  /// Compose, and the Save a copy button.
+  Widget _videoStrip() {
+    final int? secs = widget.draft.videoSeconds;
+    final String rawName = widget.draft.videoName ?? '';
+    final String name = rawName.isNotEmpty ? rawName : 'Video';
+    final List<String> trims = secs == null
+        ? <String>[]
+        : appsThatWillTrim(_selectedIds, secs);
+    final bool fits = trims.isEmpty;
+    final String info = secs == null
+        ? 'Video attached'
+        : (fits
+            ? '${formatLength(secs)}  -  fits your apps'
+            : '${formatLength(secs)}  -  ${platformCheckMessage(_selectedIds, secs)}');
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.5)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Padding(
-            padding: EdgeInsets.only(left: 4, bottom: 8),
-            child: Text('Share to',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600)),
-          ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: PlatformRegistry.all.map((p) {
-              final bool on = _selectedIds.contains(p.id);
-              return Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () => _toggle(p.id),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: on
-                          ? AppColors.gold.withValues(alpha: 0.16)
-                          : AppColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: on ? AppColors.gold : AppColors.border,
-                          width: on ? 1.5 : 1),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              const Icon(Icons.videocam, color: AppColors.gold, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600),
                     ),
-                    child: Text(p.name,
-                        style: TextStyle(
-                            color: on ? AppColors.gold : Colors.white,
-                            fontSize: 13,
-                            fontWeight: on
-                                ? FontWeight.w700
-                                : FontWeight.w400)),
-                  ),
+                    Text(
+                      info,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: fits ? AppColors.textMuted : _warn,
+                          fontSize: 12),
+                    ),
+                  ],
                 ),
-              );
-            }).toList(),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: _savingCopy ? null : _saveCopy,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.gold),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  minimumSize: const Size(0, 36),
+                ),
+                icon: _savingCopy
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.gold),
+                      )
+                    : Icon(
+                        _savedCopy ? Icons.check : Icons.download_outlined,
+                        color: AppColors.gold,
+                        size: 16),
+                label: Text(
+                  _savedCopy ? 'Saved' : 'Save a copy',
+                  style: const TextStyle(color: AppColors.gold, fontSize: 12.5),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Open saves this video to Photos, copies your caption, and opens '
+            'the app. Then pick the video and paste.',
+            style: TextStyle(
+                color: AppColors.textMuted, fontSize: 11, height: 1.3),
           ),
         ],
       ),
@@ -407,7 +570,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
             Text(
-              'Tap a platform above to see your message shaped for it.',
+              'Go back to Compose and tick a platform to see your message '
+              'shaped for it.',
               textAlign: TextAlign.center,
               style: TextStyle(
                   color: AppColors.textMuted, fontSize: 14, height: 1.4),
@@ -420,7 +584,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
   Widget _dots(List<PlatformDef> platforms) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: List<Widget>.generate(platforms.length, (int i) {
@@ -679,7 +843,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
             const SizedBox(height: 8),
             Center(
               child: Text(
-                'Caption copied to clipboard -- paste in ${p.name} to post',
+                _hasVideo
+                    ? 'Open saves your video to Photos and copies this '
+                        'caption. In ${p.name}, pick the video and paste.'
+                    : 'Caption copied to clipboard -- paste in ${p.name} to post',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                     color: AppColors.textMuted, fontSize: 11),

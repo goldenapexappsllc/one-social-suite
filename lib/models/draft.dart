@@ -9,6 +9,8 @@ class Draft {
     required this.tone,
     this.mediaPath,
     this.isVideo = false,
+    this.videoName,
+    this.videoSeconds,
     required this.createdAt,
     required this.editedAt,
   });
@@ -19,6 +21,12 @@ class Draft {
   final Tone tone;
   final String? mediaPath;
   final bool isVideo;
+
+  /// Name the user gave the video, so the same video can be reused.
+  final String? videoName;
+
+  /// Length in seconds when recorded in-app (null for gallery videos).
+  final int? videoSeconds;
   final DateTime createdAt;
   final DateTime editedAt;
 
@@ -29,6 +37,8 @@ class Draft {
         'tone': tone.name,
         'mediaPath': mediaPath,
         'isVideo': isVideo,
+        'videoName': videoName,
+        'videoSeconds': videoSeconds,
         'createdAt': createdAt.toIso8601String(),
         'editedAt': editedAt.toIso8601String(),
       };
@@ -46,6 +56,8 @@ class Draft {
         ),
         mediaPath: m['mediaPath'] as String?,
         isVideo: m['isVideo'] as bool? ?? false,
+        videoName: m['videoName'] as String?,
+        videoSeconds: m['videoSeconds'] as int?,
         createdAt: DateTime.tryParse(m['createdAt'] as String? ?? '') ??
             DateTime.now(),
         editedAt: DateTime.tryParse(m['editedAt'] as String? ?? '') ??

@@ -6,7 +6,7 @@ enum ShareMode {
   openAndCopy,  // no public share API: open app + copy caption to clipboard
 }
 
-/// Static definition of a social platform in the 8-platform gateway.
+/// Static definition of a social platform in the gateway.
 @immutable
 class PlatformDef {
   const PlatformDef({
@@ -18,6 +18,7 @@ class PlatformDef {
     this.glyph,
     this.deepLinkScheme,
     this.androidPackage,
+    this.inAll = true,
   });
 
   final String id;
@@ -36,6 +37,11 @@ class PlatformDef {
   /// deepLinkScheme on Android, since many apps only register narrow,
   /// path-specific intent filters rather than a generic "open app" scheme.
   final String? androidPackage;
+
+  /// Whether the "All" chip on Compose includes this platform. Each platform
+  /// in a post uses one AI Assist, so extra platforms stay out of "All" and
+  /// are ticked one at a time.
+  final bool inAll;
 
   bool get isOpenAndCopy => shareMode == ShareMode.openAndCopy;
 }
