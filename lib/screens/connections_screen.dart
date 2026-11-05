@@ -3,19 +3,41 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../app_name.dart';
+import '../models/platform_def.dart';
+import '../models/platform_registry.dart';
 import '../theme/app_theme.dart';
+
+/// Paste your YouTube link here when the demo video is uploaded.
+/// While it is empty, the "Watch it in action" card stays hidden.
+const String kDemoVideoUrl = '';
+
+/// Apps shown first, in this order. Anything not listed follows after.
+const List<String> _appOrder = <String>[
+  'whatsapp',
+  'instagram',
+  'youtube',
+  'telegram',
+  'facebook',
+  'tiktok',
+  'snapchat',
+  'x',
+  'threads',
+  'pinterest',
+  'linkedin',
+  'nextdoor',
+];
 
 /// Plain-language how-to shown on the App Info tab. Built as a function so
 /// the app name resolves per platform, and returned as one string so it can
 /// be copied to the clipboard and pasted into a translator.
-String howToUse() => """How $kAppName works
+String howToUse() => """$kAppName: write once, share to the apps you already use
 
-Draft once, adapt it for any audience, and share it to any app on your phone in seconds. No account, no sign-up.
+Works with WhatsApp, Instagram, YouTube, Telegram, Facebook, TikTok, Snapchat, X, Threads, Pinterest, LinkedIn and Nextdoor. Draft once, adapt it for any audience, and share in seconds. No account, no sign-up.
 
 BEFORE YOU START
 
 Sign in to your social apps first.
-$kAppName never asks for your passwords and never stores them. Open Instagram, X, TikTok, or whichever apps you use and make sure you are already signed in on this phone.
+$kAppName never asks for your passwords and never stores them. Open WhatsApp, Instagram, or whichever apps you use and make sure you are already signed in on this phone.
 
 STEP BY STEP
 
@@ -26,7 +48,7 @@ There is no sign-in or setup in $kAppName. Open it and start writing.
 Type it in the compose box. Add a video if you like (see HOW VIDEO WORKS below).
 
 3. Translate and tailor it with AI Assist.
-Pick a target language and AI Assist adapts your text naturally, so you can write in one language and post in another. Choose your platforms, or tap All, and each one gets a version shaped to its style, tone, and character limit. Every plan includes a 2-week free trial.
+Pick a target language and AI Assist adapts your text naturally, so you can write in one language and post in another. Choose your apps, or tap All, and each one gets a version shaped to its style, tone, and character limit. Every plan includes a 2-week free trial.
 
 AI Assist is the only feature that sends anything off your device. Your text passes through our proxy to OpenAI to be rewritten -- our proxy doesn't store it, and OpenAI doesn't use it to train their models. It's held briefly for abuse prevention, then deleted. Your videos are never sent anywhere by $kAppName.
 
@@ -83,7 +105,6 @@ class ConnectionsScreen extends StatefulWidget {
 }
 
 class _ConnectionsScreenState extends State<ConnectionsScreen> {
-
   Future<void> _copyGuide() async {
     await Clipboard.setData(ClipboardData(text: howToUse()));
     if (!mounted) return;
@@ -92,6 +113,135 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
         content: Text('Instructions copied -- paste them anywhere, '
             'including a translator.'),
         duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  List<PlatformDef> _orderedApps() {
+    final List<PlatformDef> list =
+        List<PlatformDef>.from(PlatformRegistry.all);
+    int rank(PlatformDef p) {
+      final int i = _appOrder.indexOf(p.id.toLowerCase());
+      return i < 0 ? 999 : i;
+    }
+
+    list.sort((PlatformDef a, PlatformDef b) => rank(a).compareTo(rank(b)));
+    return list;
+  }
+
+  Widget _appBubble(PlatformDef p) {
+    return SizedBox(
+      width: 68,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.gold, width: 1.5),
+            ),
+            child: Center(
+              child: p.icon != null
+                  ? Icon(p.icon, color: AppColors.gold, size: 22)
+                  : Text(p.glyph ?? '?',
+                      style: const TextStyle(
+                          color: AppColors.gold,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800)),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            p.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 11.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _appsCard() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      padding: const EdgeInsets.fromLTRB(12, 16, 12, 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        children: <Widget>[
+          const Text(
+            'Write once. Share to the apps you already use.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                color: AppColors.gold,
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                height: 1.3),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 6,
+            runSpacing: 14,
+            children: _orderedApps().map(_appBubble).toList(),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Text and video, shaped for each app. No account. '
+            'No passwords.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                color: AppColors.textMuted, fontSize: 12.5, height: 1.35),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _demoCard() {
+    if (kDemoVideoUrl.isEmpty) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.play_circle_outline, color: AppColors.gold, size: 22),
+              SizedBox(width: 8),
+              Text('Watch it in action',
+                  style: TextStyle(
+                      color: AppColors.gold,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold)),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            'A short video that shows the whole flow. Press and hold the '
+            'link to copy it, then open it in your browser or YouTube.',
+            style: TextStyle(
+                color: AppColors.textMuted, fontSize: 12.5, height: 1.35),
+          ),
+          SizedBox(height: 8),
+          SelectableText(
+            kDemoVideoUrl,
+            style: TextStyle(color: AppColors.gold, fontSize: 13.5),
+          ),
+        ],
       ),
     );
   }
@@ -157,7 +307,6 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
               child: Column(
                 children: <Widget>[
                   const SizedBox(height: 12),
-                  // New vertical logo -- replaces text title + old BrandLogo
                   Image.asset(
                     Platform.isIOS
                         ? 'assets/images/logo_header_ios.png'
@@ -166,6 +315,8 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 16),
+                  _appsCard(),
+                  _demoCard(),
                   _guideCard(),
                   const SizedBox(height: 24),
                 ],
